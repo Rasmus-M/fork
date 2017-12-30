@@ -92,8 +92,10 @@ double_buffer_x:
        equ  double_buffer_flag+2
 double_buffer_y:
        equ  double_buffer_x+2
-pad_max:
+copy_loop:
        equ  double_buffer_y+2
+pad_max:
+       equ  copy_loop+22
 
 ********************************************************************************
 *
@@ -105,9 +107,14 @@ main:
        lwpi wrksp                      ; Setup workspace
        li   r10,stack                  ; Setup stack pointer
        li   r13,vdpwd                  ; Do not change
-       bl   @init_patterns
-       bl   @init_map
+       li   r0,copy_loop_1
+       li   r1,copy_loop
+       li   r2,copy_loop_2-copy_loop_1
+       bl   @copy_memory
        bl   @gmode
+       bl   @init_patterns
+       bl   @init_gfx
+       bl   @init_map                  ; Overwrites graphics
        clr  @x
        clr  @y
        clr  @vx
@@ -194,9 +201,9 @@ update_name_table:
        sra r5,5                        ; Row offset
        andi r6,>001c                   ; Pixel row offset * 4
 *      Row loop
-       clr  r2
+       clr  r3
 update_name_table_1:
-       mov  r2,r1                      ; Row
+       mov  r3,r1                      ; Row
        a    r5,r1                      ; Add row offset
        andi r1,7                       ; Mod 8
        sla  r1,1                       ; To word offset
@@ -207,19 +214,12 @@ update_name_table_1:
        a    r4,r1                      ; Add column offset
 *      Column loop
        bl   @vwad
-       li   r3,24/4
-update_name_table_2:
-       movb *r1+,*r13
-       movb *r1+,*r13
-       movb *r1+,*r13
-       movb *r1+,*r13
-*      Next column
-       dec  r3
-       jne  update_name_table_2
+       li   r2,24/8
+       bl   @copy_loop
 *      Next row
        ai   r0,32
-       inc  r2
-       ci   r2,24
+       inc  r3
+       ci   r3,24
        jlt  update_name_table_1
 *      Return
        dect r10                        ; Pop return address off the stack
@@ -503,6 +503,47 @@ to_pattern:
 
 *********************************************************************************
 *
+* Init graphics
+*
+init_gfx:
+       mov  r11,*r10+                  ; Push return address onto the stack
+*      Name tables
+       li   r1,>ff00
+       li   r0,nametb
+       li   r2,>300
+       bl   @vsmw
+       li   r0,namet1
+       li   r2,>300
+       bl   @vsmw
+*      Colors
+       li   r0,colrtb
+       li   r1,>f100
+       li   r2,16
+       bl   @vsmw
+       li   r0,colrtb+16
+       li   r1,>8100
+       li   r2,16
+       bl   @vsmw
+*      Sprite patterns
+       li   r0,sprptb+>400
+       li   r1,SPR8
+       li   r2,16*32
+       bl   @vdpcp
+*      Sprite attributes
+       li   r0,spratb
+       li   r1,sal_init
+       li   r2,5
+       bl   @vdpcp
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+sal_init:
+       byte >58,>58,>a0,>05,>d0
+*// init_gfx
+
+*********************************************************************************
+*
 * Set graphics mode
 *
 gmode:
@@ -516,33 +557,11 @@ gmode_1:
        ai   r0,>0100
        dec  r2
        jne  gmode_1
-*      Reset upper patterns
-       li   r0,>700
+*      Clear VDP RAM
+       clr  r0
        clr  r1
-       li   r3,8
-gmode_2:
-       li   r2,>100
+       li   r2,>4000
        bl   @vsmw
-       ai   r0,>800
-       dec  r3
-       jne  gmode_2
-*      Name tables
-       li   r1,>ff00
-       li   r0,nametb
-       li   r2,>300
-       bl   @vsmw
-       li   r0,namet1
-       li   r2,>300
-       bl   @vsmw
-*      Colors
-       li   r0,colrtb
-       li   r1,>f100
-       li   r2,32
-       bl   @vsmw
-*      Sprite attributes
-       li   r0,spratb
-       li   r1,>d000
-       bl   @vsbw
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
@@ -643,6 +662,7 @@ vsmw_1:
 * R2: Number of bytes to copy
 *
 vdpcp:
+       mov  r11,*r10+                  ; Push return address onto the stack
        swpb r0
        movb r0,@vdpwa                  ; Send low byte of VDP RAM write address
        swpb r0
@@ -650,26 +670,18 @@ vdpcp:
        movb r0,@vdpwa                  ; Send high byte of VDP RAM write address
 vdpcp0:
        mov  r2,r0
-       srl  r0,3                       ; Number of groups of 8
+       srl  r2,3                       ; Number of groups of 8
        jeq  vdpcp2
-vdpcp1:
-       movb *r1+,*r13                  ; Write to VDP
-       movb *r1+,*r13
-       movb *r1+,*r13
-       movb *r1+,*r13
-       movb *r1+,*r13
-       movb *r1+,*r13
-       movb *r1+,*r13
-       movb *r1+,*r13
-       dec  r0
-       jne  vdpcp1
-       andi r2,>0007                   ; Isolate number of remaining bytes
+       bl   @copy_loop
+       andi r0,>0007                   ; Isolate number of remaining bytes
        jeq  vdpcp3
 vdpcp2:
        movb *r1+,*r13                  ; Write to VDP
-       dec  r2
+       dec  r0
        jne  vdpcp2
 vdpcp3:
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
        b    *r11
 *// vdpcp
 
@@ -698,9 +710,38 @@ vmbr1:
 *// vmbr
 
 *********************************************************************
-
-       copy "background.a99"
+*
+* Copy memory
+*
+* R0: Source address
+* R1: Destination address
+* R2: Length
+*
+copy_memory:
+       mov  *r0+,*r1+
+       dect r2
+       jne  copy_memory
+       b    *r11
+*// copy_memory
 
 *********************************************************************
+
+       copy "graphics.a99"
+
+*********************************************************************
+
+copy_loop_1:
+       movb *r1+,*r13                  ; Write to VDP
+       movb *r1+,*r13
+       movb *r1+,*r13
+       movb *r1+,*r13
+       movb *r1+,*r13
+       movb *r1+,*r13
+       movb *r1+,*r13
+       movb *r1+,*r13
+       dec  r2
+       jne  copy_loop_1
+       b    *r11
+copy_loop_2
 
        end main

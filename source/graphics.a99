@@ -1,0 +1,127 @@
+****************************************
+* Transition Map Data
+****************************************
+
+map_row_index:
+       data 0,1,2,2,2,2,2,3
+map_rows:
+       data >0001,>0101,>0101,>0203,>0001,>0101,>0101,>0203,>0001,>0101,>0101,>0203,>0001,>0101,>0101,>0203
+       data >0405,>0505,>0505,>0607,>0405,>0505,>0505,>0607,>0405,>0505,>0505,>0607,>0405,>0505,>0505,>0607
+       data >0809,>0909,>0909,>0A0B,>0809,>0909,>0909,>0A0B,>0809,>0909,>0909,>0A0B,>0809,>0909,>0909,>0A0B
+       data >0C0D,>0D0D,>0D0D,>0E0F,>0C0D,>0D0D,>0D0D,>0E0F,>0C0D,>0D0D,>0D0D,>0E0F,>0C0D,>0D0D,>0D0D,>0E0F
+
+****************************************
+* Original Character Patterns           
+****************************************
+pat0:
+       DATA >7FBF,>DFEF,>F7FB,>FDFE    ;
+       DATA >FFFF,>FFFF,>FFFF,>FFFF    ;
+       DATA >FFFE,>FCF8,>F0E0,>C080    ;
+       DATA >55AA,>55AA,>55AA,>55AA    ;
+       DATA >8080,>8080,>8080,>8080    ;
+       DATA >FF00,>0000,>0000,>0000    ;
+       DATA >8040,>2010,>0804,>0201    ;
+
+****************************************
+* Transition Character Pairs (from, to) 
+****************************************
+hchars:
+       BYTE >00,>01                    ; #00
+       BYTE >01,>01                    ; #01
+       BYTE >01,>02                    ; #02
+       BYTE >02,>00                    ; #03
+       BYTE >01,>03                    ; #04
+       BYTE >03,>03                    ; #05
+       BYTE >03,>04                    ; #06
+       BYTE >04,>01                    ; #07
+       BYTE >02,>05                    ; #08
+       BYTE >05,>05                    ; #09
+       BYTE >05,>06                    ; #0A
+       BYTE >06,>02                    ; #0B
+****************************************
+vchars:
+       BYTE >00,>08                    ; #00
+       BYTE >01,>09                    ; #01
+       BYTE >02,>0A                    ; #02
+       BYTE >03,>0B                    ; #03
+       BYTE >04,>00                    ; #04
+       BYTE >05,>01                    ; #05
+       BYTE >06,>02                    ; #06
+       BYTE >07,>03                    ; #07
+       BYTE >04,>04                    ; #08
+       BYTE >05,>05                    ; #09
+       BYTE >06,>06                    ; #0A
+       BYTE >07,>07                    ; #0B
+       BYTE >08,>04                    ; #0C
+       BYTE >09,>05                    ; #0D
+       BYTE >0A,>06                    ; #0E
+       BYTE >0B,>07                    ; #0F
+
+****************************************
+* Sprite patterns
+****************************************
+
+SPR8   DATA >0000,>3F3F,>3F3F,>3F3F
+       DATA >3F3F,>3F3F,>3F3F,>0000
+       DATA >0000,>FCFC,>FCFC,>FCFC
+       DATA >FCFC,>FCFC,>FCFC,>0000
+SPR9   DATA >0000,>1F7F,>7F3F,>3F3F
+       DATA >3F3F,>1F1F,>1F1F,>0000
+       DATA >00F8,>F8F8,>FCFC,>FCFC
+       DATA >FCFE,>FEFE,>FC80,>0000
+SPR10  DATA >0001,>073F,>7F7F,>7F3F
+       DATA >3F3F,>1F1F,>0F0F,>0600
+       DATA >30F0,>F8F8,>F8FC,>FCFE
+       DATA >FEFE,>FFFE,>F0C0,>0000
+SPR11  DATA >0000,>0307,>1F7F,>FF7F
+       DATA >7F3F,>1F1F,>0F07,>0703
+       DATA >60E0,>F0F0,>F8FC,>FCFE
+       DATA >FFFF,>FFFC,>F8E0,>C000
+SPR12  DATA >0103,>070F,>1F3F,>7FFF
+       DATA >FF7F,>3F1F,>0F07,>0301
+       DATA >80C0,>E0F0,>F8FC,>FEFF
+       DATA >FFFE,>FCF8,>F0E0,>C080
+SPR13  DATA >0207,>0F0F,>1F3F,>3F7F
+       DATA >FFFF,>FF3F,>1F07,>0300
+       DATA >0000,>C0E0,>F8FC,>FFFE
+       DATA >FEFC,>F8F8,>F0E0,>E0C0
+SPR14  DATA >000C,>0F1F,>1F1F,>3F3F
+       DATA >7F7F,>FFFF,>7F0F,>0300
+       DATA >0000,>80E0,>F8FE,>FEFE
+       DATA >FCFC,>FCF8,>F8F0,>F060
+SPR15  DATA >0000,>1F1F,>1F3F,>3F3F
+       DATA >3F3F,>7F7F,>7F3F,>0100
+       DATA >0000,>00F8,>FEFE,>FCFC
+       DATA >FCFC,>FCF8,>F8F8,>F800
+SPR16  DATA >0018,>1E1F,>1F1F,>1F1F
+       DATA >1F1F,>1F1F,>1F1E,>1800
+       DATA >0000,>0000,>C0F0,>F8FE
+       DATA >FEF8,>F0C0,>0000,>0000
+SPR17  DATA >0000,>3C3F,>3F3F,>1F1F
+       DATA >1F0F,>0F0F,>0707,>0600
+       DATA >0000,>0080,>F0FE,>FEFC
+       DATA >F8F0,>E0C0,>8000,>0000
+SPR18  DATA >0000,>007F,>7F3F,>3F1F
+       DATA >0F0F,>0707,>0301,>0100
+       DATA >0000,>00FE,>FEFC,>FCF8
+       DATA >F0F0,>E0E0,>C080,>8000
+SPR19  DATA >0000,>0001,>0F7F,>7F3F
+       DATA >1F0F,>0703,>0100,>0000
+       DATA >0000,>3CFC,>FCFC,>F8F8
+       DATA >F8F0,>F0F0,>E0E0,>6000
+SPR20  DATA >0000,>0000,>030F,>1F7F
+       DATA >7F1F,>0F03,>0000,>0000
+       DATA >0018,>78F8,>F8F8,>F8F8
+       DATA >F8F8,>F8F8,>F878,>1800
+SPR21  DATA >0000,>0001,>0307,>0F1F
+       DATA >3F7F,>7F0F,>0100,>0000
+       DATA >0060,>E0E0,>F0F0,>F0F8
+       DATA >F8F8,>FCFC,>FC3C,>0000
+SPR22  DATA >0001,>0103,>0707,>0F0F
+       DATA >1F3F,>3F7F,>7F00,>0000
+       DATA >0080,>80C0,>E0E0,>F0F0
+       DATA >F8FC,>FCFE,>FE00,>0000
+SPR23  DATA >0006,>0707,>0F0F,>0F1F
+       DATA >1F1F,>3F3F,>3F3C,>0000
+       DATA >0000,>0080,>C0E0,>F0F8
+       DATA >FCFE,>FEF0,>8000,>0000
