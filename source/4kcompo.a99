@@ -246,27 +246,27 @@ user_input_1:
 *      Left
        tb   1
        jeq  user_input_2
-       li   r0,->0010
+       li   r0,->0020
        mov  r0,@ax
        jmp  user_input_3
 user_input_2:
 *      Right
        tb   2
        jeq  user_input_3
-       li   r0,>0010
+       li   r0,>0020
        mov  r0,@ax
 user_input_3:
 *      Down
        tb   3
        jeq  user_input_4
-       li   r0,>010
+       li   r0,>0020
        mov  r0,@ay
        jmp  user_input_5
 user_input_4:
 *      Up
        tb   4
        jeq  user_input_5
-       li   r0,->0010
+       li   r0,->0020
        mov  r0,@ay
 user_input_5:
        b    *r11
@@ -277,14 +277,51 @@ user_input_5:
 * Move player
 *
 move:
-       a    @ax,@vx
-       mov  @vx,r0
-       sra  r0,8
-       a    r0,@x
-       a    @ay,@vy
-       mov  @vy,r0
-       sra  r0,8
-       a    r0,@y
+*      X
+       mov  @vx,r0                     ; Velocity
+       mov  @ax,r1
+       jeq  move_1
+*      Accelerate
+       a    r1,r0
+       jmp  move_3
+*      Decelerate
+move_1:
+       mov  r0,r1                      ; Velocity
+       jlt  move_2
+       ci   r1,>00c0
+       jgt  move_2
+       clr  r0                         ; Stop
+       jmp  move_3
+move_2:
+       sra  r1,6                       ; Divide velocity by 16
+       s    r1,r0                      ; Subtract from velocity
+move_3:
+       mov  r0,@vx                     ; Save velocity
+       sra  r0,8                       ; Shift to LSB
+       a    r0,@x                      ; Add to position
+*      Y
+       mov  @vy,r0                     ; Velocity
+       mov  @ay,r1
+       jeq  move_4
+*      Accelerate
+       a    r1,r0
+       jmp  move_6
+*      Decelerate
+move_4:
+       mov  r0,r1                      ; Velocity
+       jlt  move_5
+       ci   r1,>00c0
+       jgt  move_5
+       clr  r0                         ; Stop
+       jmp  move_6
+move_5:
+       sra  r1,6                       ; Divide velocity by 16
+       s    r1,r0                      ; Subtract from velocity
+move_6:
+       mov  r0,@vy                     ; Save velocity
+       sra  r0,8                       ; Shift to LSB
+       a    r0,@y                      ; Add to position
+*      Return
        b    *r11
 *// move
 
