@@ -1,0 +1,669 @@
+*********************************************************************
+*
+* 4K Compo
+* For the TI-99/4A home computer
+*
+* January 2017
+* Rasmus Moustgaard <rasmus.moustgaard@gmail.com>
+*
+*********************************************************************
+
+       def  main
+
+**
+* Assembly options
+*
+
+
+**
+* Constants
+*
+
+
+**
+* Memory mapped addresses
+*
+vdpwd  equ  >8c00                      ; VDP write data
+vdpwa  equ  >8c02                      ; VDP set read/write address
+vdprd  equ  >8800                      ; VDP read data
+vdpsta equ  >8802                      ; VDP status
+sound  equ  >8400
+
+**
+* VDP memory map
+*
+ptrntb equ  >0000                      ; Pattern table base 0        >0000 - >03FF (128 patterns)
+nametb equ  >0400                      ; Name table base 0           >0400 - >06FF
+                                       ; Pattern table 0 high        >0700 - >07FF (20 patterns)
+ptrnt1 equ  >0800                      ; Pattern table base 1        >0800 - >0BFF (128 patterns)
+namet1 equ  >0c00                      ; Name table base             >0C00 - >0EFF
+                                       ; Pattern table 1 high        >0F00 - >0FFF (20 patterns)
+ptrnt2 equ  >1000                      ; Pattern table base 2        >1000 - >13FF (128 patterns)
+sprptb equ  >1000                      ; Sprite pattern table base   >1400 - >16FF (24 patterns)
+                                       ; Pattern table 2 high        >1700 - >17FF (20 patterns)
+ptrnt3 equ  >1800                      ; Pattern table base 3        >1800 - >1BFF (128 patterns)
+spratb equ  >1C00                      ; Sprite attribute table base >1C00 - >1C7F
+colrtb equ  >1C80                      ; Color table base            >1C80 - >1CFF
+                                       ; Unused                      >1D00 - >1EFF (>200 bytes)
+                                       ; Pattern table 4 high        >1F00 - >1FFF
+ptrnt4 equ  >2000                      ; Pattern table base 4        >2000 - >23FF (128 patterns)
+                                       ; Unused                      >2400 - >26FF (>300 bytes)
+                                       ; Pattern table 4 high        >2700 - >27FF (20 pattern)
+ptrnt5 equ  >2800                      ; Pattern table base 5        >2800 - >2BFF (128 patterns)
+                                       ; Unused                      >2C00 - >2EFF (>300 bytes)
+                                       ; Pattern table 5 high        >2F00 - >2FFF (20 pattern)
+ptrnt6 equ  >3000                      ; Pattern table base 6        >3000 - >33FF (128 patterns)
+                                       ; Unused                      >3400 - >36FF (>300 bytes)
+                                       ; Pattern table 6 high        >3700 - >37FF (20 pattern)
+ptrnt7 equ  >3800                      ; Pattern table base 7        >3800 - >3BFF (128 patterns)
+                                       ; Unused                      >3C00 - >3EFF (>300 bytes)
+                                       ; Pattern table 7 high        >3F00 - >3FFF (20 pattern)
+
+**
+* Scratch pad
+*
+rndsd  equ  >83c0                      ; Random number seed
+pad    equ  >8300
+wrksp  equ  pad                        ; Workspace
+r0lb   equ  wrksp+1                    ; r0 low byte required for VDP routines
+r1lb   equ  wrksp+3
+r2lb   equ  wrksp+5
+r3lb   equ  wrksp+7
+stack  equ  wrksp+>20                  ; Stack (grows up)
+padvar equ  stack+>20                  ; Start of pad variables
+*
+* PAD variables
+*
+x:                                     ; mmmmmmmmtttpppss
+       equ  padvar                     ; m=metatile, t=tile, p=pixel, s=sub-pixel
+y:
+       equ  x+2
+vx:
+       equ  y+2
+vy:
+       equ  vx+2
+ax:
+       equ  vy+2
+ay:
+       equ  ax+2
+double_buffer_flag:
+       equ  ay+2
+double_buffer_x:
+       equ  double_buffer_flag+2
+double_buffer_y:
+       equ  double_buffer_x+2
+pad_max:
+       equ  double_buffer_y+2
+
+********************************************************************************
+*
+* Main program
+*
+       aorg >a000
+main:
+       limi 0                          ; Interrupts off
+       lwpi wrksp                      ; Setup workspace
+       li   r10,stack                  ; Setup stack pointer
+       li   r13,vdpwd                  ; Do not change
+       bl   @init_patterns
+       bl   @init_map
+       bl   @gmode
+       clr  @x
+       clr  @y
+       clr  @vx
+       clr  @vy
+       clr  @double_buffer_flag
+       bl   @update_name_table
+main_loop:
+       bl   @vsync
+       bl   @set_pattern_table
+       bl   @set_name_table
+       bl   @user_input
+       bl   @move
+       bl   @update_name_table
+       jmp  main_loop
+*// main
+
+*********************************************************************
+*
+* Wait for vertical retrace (CRU)
+*
+vsync:
+       movb @vdpsta,r12
+       clr  r12
+vsync_1:
+       tb   2                          ; Test CRU bit for VDP interrupt
+       jeq  vsync_1
+       movb @vdpsta,r12
+       b    *r11
+*// vsync
+
+*********************************************************************************
+*
+* Set pattern table according to horizontal scroll offset
+*
+set_pattern_table:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       mov  @double_buffer_x,r0
+       sra  r0,2                       ; Shift out sub-pixels
+       andi r0,>0007                   ; Isolate pixels
+       ori  r0,>0400
+       bl   @vwtr
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// set_pattern_table
+
+*********************************************************************************
+*
+* Flip name table
+*
+set_name_table:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       mov  @double_buffer_flag,r0
+       andi r0,>0002
+       ori  r0,>0201
+       bl   @vwtr
+       inv  @double_buffer_flag
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// set_name_table
+
+*********************************************************************************
+*
+* Update name table
+*
+update_name_table:
+       mov  r11,*r10+                  ; Push return address onto the stack
+*      VDP address
+       mov  @double_buffer_flag,r0
+       andi r0,>0002
+       ori  r0,>0001
+       sla  r0,10
+*      Tile offsets
+       mov  @x,r4
+       mov  r4,@double_buffer_x
+       sra  r4,5                       ; Shift out pixels and sub-pixels
+       andi r4,7                       ; Column offset
+       mov  @y,r5
+       mov  r5,@double_buffer_y
+       mov  r5,r6
+       sra r5,5                        ; Row offset
+       andi r6,>001c                   ; Pixel row offset * 4
+*      Row loop
+       clr  r2
+update_name_table_1:
+       mov  r2,r1                      ; Row
+       a    r5,r1                      ; Add row offset
+       andi r1,7                       ; Mod 8
+       sla  r1,1                       ; To word offset
+       mov  @map_row_index(r1),r1      ; Map row number
+       a    r6,r1
+       sla  r1,5                       ; Multiply by 32
+       ai   r1,map_rows
+       a    r4,r1                      ; Add column offset
+*      Column loop
+       bl   @vwad
+       li   r3,24/4
+update_name_table_2:
+       movb *r1+,*r13
+       movb *r1+,*r13
+       movb *r1+,*r13
+       movb *r1+,*r13
+*      Next column
+       dec  r3
+       jne  update_name_table_2
+*      Next row
+       ai   r0,32
+       inc  r2
+       ci   r2,24
+       jlt  update_name_table_1
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// update_name_table
+
+*********************************************************************************
+*
+* User input
+*
+user_input:
+       clr  @ax
+       clr  @ay
+*      Read joystick #1 using CRU
+       li   r12,>0024                  ; CRU address of the column decoder
+       li   r0,>0600                   ; Column 6, i.e joystick #1
+       ldcr r0,3                       ; Select it
+       li   r12,>0006                  ; Base CRU address for joystick 1
+*      Fire
+       tb   0
+       jeq  user_input_1
+user_input_1:
+*      Left
+       tb   1
+       jeq  user_input_2
+       li   r0,->0010
+       mov  r0,@ax
+       jmp  user_input_3
+user_input_2:
+*      Right
+       tb   2
+       jeq  user_input_3
+       li   r0,>0010
+       mov  r0,@ax
+user_input_3:
+*      Down
+       tb   3
+       jeq  user_input_4
+       li   r0,>010
+       mov  r0,@ay
+       jmp  user_input_5
+user_input_4:
+*      Up
+       tb   4
+       jeq  user_input_5
+       li   r0,->0010
+       mov  r0,@ay
+user_input_5:
+       b    *r11
+*// user_input
+
+*********************************************************************************
+*
+* Move player
+*
+move:
+       a    @ax,@vx
+       mov  @vx,r0
+       sra  r0,8
+       a    r0,@x
+       a    @ay,@vy
+       mov  @vy,r0
+       sra  r0,8
+       a    r0,@y
+       b    *r11
+*// move
+
+*********************************************************************************
+*
+* Initialize map
+*
+init_map:
+       li   r0,map_rows
+       li   r1,map_rows+128
+       li   r2,7*128
+       li   r3,>1000
+init_map_1:
+       movb *r0+,r4
+       ab   r3,r4
+       movb r4,*r1+
+       dec  r2
+       jne  init_map_1
+*      Return
+       b    *r11
+*// init_map
+
+*********************************************************************************
+*
+* Scroll patterns and upload to VDP
+*
+init_patterns:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       bl   @hscroll
+       bl   @vscroll
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// init_patterns
+
+*********************************************************************************
+*
+* Scroll patterns horizontally and upload to VDP
+*
+h_patterns:
+       equ  12
+*
+hscroll:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       li   r6,hchars                 ; Pointer to from/to pattern numbers
+*      Pattern loop
+       clr  r3                         ; Pattern counter
+hscroll_1:
+*      Scroll offset loop
+       clr  r4                         ; Horizontal scroll offset (0-7)
+hscroll_2:
+       mov  *r6,r7                     ; Get from and to pattern numbers
+       mov  r7,r8
+       andi r7,>ff00
+       srl  r7,5
+       ai   r7,pat0                    ; Address of from pattern
+       andi r8,>00ff
+       sla  r8,3
+       ai   r8,pat0                    ; Address of to pattern
+*      Write address
+       mov  r3,r0                      ; Pattern number
+       sla  r0,3                       ; Multiply by 8
+       mov  r4,r1                      ; Scroll offset
+       sla  r1,11                      ; Multiply by >800
+       ai   r1,ptrntb+>400             ; Add pattern table base plus offset
+       a    r1,r0
+       bl   @vwad                      ; Setup write address
+*      Row loop
+       li   r9,8                       ; Row counter
+hscroll_3:
+       movb *r7+,r1                    ; Get from byte
+       movb *r8+,@r1lb                 ; Get to byte
+       mov  r4,r0                      ; Get scroll offset
+       jeq  hscroll_4                  ; Skip shift if zero
+       sla  r1,0
+hscroll_4:
+       movb r1,*r13                    ; Send to VDP
+*      Next row
+       dec  r9
+       jne  hscroll_3
+*      Next scroll offset
+       inc  r4
+       ci   r4,8
+       jlt  hscroll_2
+*      Next pattern
+       inct r6
+       inc  r3
+       ci   r3,h_patterns                      ;
+       jlt  hscroll_1
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// hscroll
+
+*********************************************************************************
+*
+* Scroll horizontal patterns vertically and upload to VDP
+*
+v_patterns:
+       equ  16
+*
+vscroll:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       li   r6,vchars                  ; Pointer to from/to pattern numbers
+*      Pattern loop
+       clr  r3                         ; Pattern counter
+vscroll_1:
+       mov  *r6+,r7                     ; Get from and to pattern numbers
+       swpb r7
+       mov  r7,r8
+       andi r7,>ff00
+       srl  r7,5
+       andi r8,>00ff
+       sla  r8,3
+*      Horizontal loop
+       clr  r4                         ; Horizontal offset (0-7)
+vscroll_2:
+*      Read from pattern
+       mov  r4,r0
+       sla  r0,11
+       ai   r0,ptrntb+>400
+       a    r7,r0
+       li   r1,from_pattern
+       li   r2,8
+       bl   @vmbr
+*      Read to pattern
+       mov  r4,r0
+       sla  r0,11
+       ai   r0,ptrntb+>400
+       a    r8,r0
+       li   r1,to_pattern
+       li   r2,8
+       bl   @vmbr
+*      Vertical loop
+       clr  r5                         ; Vertical offset (0-7)
+vscroll_3:
+*      Write address
+       mov  r3,r0                      ; Pattern number
+       sla  r0,3                       ; Multiply by 8
+       mov  r4,r1                      ; Horizontal scroll offset
+       sla  r1,11                      ; Multiply by >800
+       ai   r1,ptrntb                  ; Add pattern table base
+       a    r1,r0                      ; Add to address
+       mov  r5,r1                      ; Vertical scroll offset
+       sla  r1,7                       ; Multiply by >80
+       a    r1,r0                      ; Add to address
+       bl   @vwad                      ; Setup write address
+*      Row loop
+       li   r9,8                       ; Row counter
+       li   r1,from_pattern            ; Address of from/to pattern buffer
+       a    r5,r1                      ; Add vertical scroll offset
+vscroll_4:
+       movb *r1+,*r13
+       dec  r9
+       jne  vscroll_4
+*      Next vertical scroll offset
+       inc  r5
+       ci   r5,8
+       jlt  vscroll_3
+*      Next horizontal scroll offset
+       inc  r4
+       ci   r4,8
+       jlt  vscroll_2
+*      Next pattern
+       inc  r3
+       ci   r3,v_patterns                      ;
+       jlt  vscroll_1
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+from_pattern:
+       bss  8
+to_pattern:
+       bss  8
+*// vscroll
+
+*********************************************************************************
+*
+* Set graphics mode
+*
+gmode:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       clr  r0
+       li   r1,vregs
+       li   r2,8
+gmode_1:
+       movb *r1+,@r0lb
+       bl   @vwtr                      ; Set register
+       ai   r0,>0100
+       dec  r2
+       jne  gmode_1
+*      Reset upper patterns
+       li   r0,>700
+       clr  r1
+       li   r3,8
+gmode_2:
+       li   r2,>100
+       bl   @vsmw
+       ai   r0,>800
+       dec  r3
+       jne  gmode_2
+*      Name tables
+       li   r1,>ff00
+       li   r0,nametb
+       li   r2,>300
+       bl   @vsmw
+       li   r0,namet1
+       li   r2,>300
+       bl   @vsmw
+*      Colors
+       li   r0,colrtb
+       li   r1,>f100
+       li   r2,32
+       bl   @vsmw
+*      Sprite attributes
+       li   r0,spratb
+       li   r1,>d000
+       bl   @vsbw
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*      VDP registers
+vregs:
+       byte >00                        ; Graphics II mode
+       byte >e2                        ; 16K, display on, interrupt enabled
+       byte nametb/>400                ; Name table
+       byte colrtb/>40                 ; Color table
+       byte ptrntb/>800                ; Pattern table
+       byte spratb/>80                 ; Sprite attribute table
+       byte sprptb/>800                ; Sprite pattern table
+       byte >01                        ; Backdrop color
+*// gmode
+
+*********************************************************************
+*
+* VDP Write To Register
+*
+* R0 MSB: VDP register to write to
+* R0 LSB: Value to write
+*
+vwtr:
+       swpb r0
+       movb r0,@vdpwa                  ; Send low byte (value) to write to VDP register
+       swpb r0
+       ori  r0,>8000                   ; Set up a VDP register write operation (10)
+       movb r0,@vdpwa                  ; Send high byte (address) of VDP register
+       b    *r11
+*// vwtr
+
+*********************************************************************
+*
+* VDP Set Write Address
+*
+* R0: Write address in VDP RAM
+*
+* R0 is modified, but can be restored with: ANDI R0,>3FFF
+*
+vwad:
+       swpb r0
+       movb r0,@vdpwa                  ; Send low byte of VDP RAM write address
+       swpb r0
+       ori  r0,>4000                   ; Set read/write bits 14 and 15 to write (01)
+       movb r0,@vdpwa                  ; Send high byte of VDP RAM write address
+       b    *r11
+*// vwad
+
+*********************************************************************
+*
+* VDP Single Byte Write
+*
+* R0: Write address in VDP RAM
+* R1: MSB of R1 sent to VDP RAM
+*
+* R0 is modified, but can be restored with: ANDI R0,>3FFF
+*
+vsbw:
+       swpb r0
+       movb r0,@vdpwa                  ; Send low byte of VDP RAM write address
+       swpb r0
+       ori  r0,>4000                   ; Set read/write bits 14 and 15 to write (01)
+       movb r0,@vdpwa                  ; Send high byte of VDP RAM write address
+       movb r1,*r13                    ; Write byte to VDP RAM
+       b    *r11
+*// vsbw
+
+*********************************************************************
+*
+* VDP Single Byte Multiple Write
+*
+* R0: Write address in VDP RAM
+* R1: MSB of R1 sent to VDP RAM
+* R2: Number of bytes to send
+*
+* R0 is modified, but can be restored with: ANDI R0,>3FFF
+*
+vsmw:
+       swpb r0
+       movb r0,@vdpwa                  ; Send low byte of VDP RAM write address
+       swpb r0
+       ori  r0,>4000                   ; Set read/write bits 14 and 15 to write (01)
+       movb r0,@vdpwa                  ; Send high byte of VDP RAM write address
+vsmw_1:
+       movb r1,@vdpwd                  ; Write byte to VDP RAM
+       dec  r2
+       jne  vsmw_1
+       b    *r11
+*// vsbw
+
+*********************************************************************
+*
+* Fast CPU to VDP copy, replaces VMBW
+*
+* R0: Destination address
+* R1: Source address
+* R2: Number of bytes to copy
+*
+vdpcp:
+       swpb r0
+       movb r0,@vdpwa                  ; Send low byte of VDP RAM write address
+       swpb r0
+       ori  r0,>4000                   ; Set the two MSbits to 01 for write
+       movb r0,@vdpwa                  ; Send high byte of VDP RAM write address
+vdpcp0:
+       mov  r2,r0
+       srl  r0,3                       ; Number of groups of 8
+       jeq  vdpcp2
+vdpcp1:
+       movb *r1+,*r13                  ; Write to VDP
+       movb *r1+,*r13
+       movb *r1+,*r13
+       movb *r1+,*r13
+       movb *r1+,*r13
+       movb *r1+,*r13
+       movb *r1+,*r13
+       movb *r1+,*r13
+       dec  r0
+       jne  vdpcp1
+       andi r2,>0007                   ; Isolate number of remaining bytes
+       jeq  vdpcp3
+vdpcp2:
+       movb *r1+,*r13                  ; Write to VDP
+       dec  r2
+       jne  vdpcp2
+vdpcp3:
+       b    *r11
+*// vdpcp
+
+***************************************************************************
+*
+* VDP Multiple Byte Read
+*
+* R0: Starting read address in VDP RAM
+* R1: Starting write address in CPU RAM
+* R2: Number of bytes to read from VDP RAM
+*
+* Modifies R0-R2
+*
+vmbr:
+       swpb r0
+       movb r0,@vdpwa                  ; Send low byte of VDP RAM write address
+       swpb r0
+       movb r0,@vdpwa                  ; Send high byte of VDP RAM write address
+vmbr0:
+       li   r0,vdprd
+vmbr1:
+       movb *r0,*r1+                   ; Read byte from VDP RAM
+       dec  r2                         ; Byte counter
+       jne  vmbr1                      ; Check if finished
+       b    *r11
+*// vmbr
+
+*********************************************************************
+
+       copy "background.a99"
+
+*********************************************************************
+
+       end main

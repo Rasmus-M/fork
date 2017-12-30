@@ -1,0 +1,11 @@
+
+.gitignore
+.idea/
+4kcompo
+4kcompo.dsk
+4kcompo.lst
+4kcompo.obj
+mag/horz.a99
+mag/horz2.a99
+mag/vert.a99
+mag/vert2.a99
