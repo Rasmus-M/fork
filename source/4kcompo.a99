@@ -18,7 +18,10 @@
 **
 * Constants
 *
-
+win_width:
+       equ  24
+win_height:
+       equ  24
 
 **
 * Memory mapped addresses
@@ -74,20 +77,24 @@ padvar equ  stack+>20                  ; Start of pad variables
 *
 * PAD variables
 *
+frame_no:
+       equ  padvar
 x:                                     ; mmmmmmmmtttpppss
-       equ  padvar                     ; m=metatile, t=tile, p=pixel, s=sub-pixel
-y:
+       equ  frame_no+2                 ; m=metatile, t=tile, p=pixel, s=sub-pixel
+y:                                     ; mmmmmmmmtttpppss
        equ  x+2
-vx:
+vx:                                    ; ppppppppssssssss
        equ  y+2
-vy:
+vy:                                    ; ppppppppssssssss
        equ  vx+2
-ax:
+ax:                                    ; ppppppppssssssss
        equ  vy+2
-ay:
+ay:                                    ; ppppppppssssssss
        equ  ax+2
-double_buffer_flag:
+joystick_input:
        equ  ay+2
+double_buffer_flag:
+       equ  joystick_input+2
 double_buffer_x:
        equ  double_buffer_flag+2
 double_buffer_y:
@@ -107,27 +114,18 @@ main:
        lwpi wrksp                      ; Setup workspace
        li   r10,stack                  ; Setup stack pointer
        li   r13,vdpwd                  ; Do not change
-       li   r0,copy_loop_1
-       li   r1,copy_loop
-       li   r2,copy_loop_2-copy_loop_1
-       bl   @copy_memory
-       bl   @gmode
-       bl   @init_patterns
-       bl   @init_gfx
-       bl   @init_map                  ; Overwrites graphics
-       clr  @x
-       clr  @y
-       clr  @vx
-       clr  @vy
-       clr  @double_buffer_flag
+       bl   @init
+       bl   @init_game
        bl   @update_name_table
 main_loop:
        bl   @vsync
        bl   @set_pattern_table
        bl   @set_name_table
+       bl   @update_sprites
        bl   @user_input
        bl   @move
        bl   @update_name_table
+       inc  @frame_no
        jmp  main_loop
 *// main
 
@@ -214,18 +212,54 @@ update_name_table_1:
        a    r4,r1                      ; Add column offset
 *      Column loop
        bl   @vwad
-       li   r2,24/8
+       li   r2,win_width/8
        bl   @copy_loop
 *      Next row
        ai   r0,32
        inc  r3
-       ci   r3,24
+       ci   r3,win_height
        jlt  update_name_table_1
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
        b    *r11
 *// update_name_table
+
+*********************************************************************************
+*
+* Update sprites
+*
+update_sprites:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       li   r0,spratb+2
+       mov  @joystick_input,r1
+       srl  r1,1
+       movb @dir_sprite_table(r1),r1
+       sla  r1,2
+       ai   r1,>a000
+       bl   @vsbw
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+dir_sprite_table:
+       byte >00                        ; 0 None
+       byte >04                        ; 1 Left
+       byte >00                        ; 2 Right
+       byte >00                        ; 3 Left + right (N/A)
+       byte >02                        ; 4 Up
+       byte >07                        ; 5 Up + left
+       byte >05                        ; 6 Up + right
+       byte >00                        ; 7 Up + left + right (N/A)
+       byte >06                        ; 8 Down
+       byte >01                        ; 9 Down + left
+       byte >03                        ; A Down + right
+*      byte >00                        ; B Down + left + right (N/A)
+*      byte >00                        ; C Up + down (N/A)
+*      byte >00                        ; D Up + down + left (N/A)
+*      byte >00                        ; E Up + down + right (N/A)
+*      byte >00                        ; F Up + down + left + right (N/A)
+*// update_sprites
 
 *********************************************************************************
 *
@@ -239,6 +273,11 @@ user_input:
        li   r0,>0600                   ; Column 6, i.e joystick #1
        ldcr r0,3                       ; Select it
        li   r12,>0006                  ; Base CRU address for joystick 1
+       stcr r1,8
+       inv  r1
+       andi r1,>ff00
+       swpb r1
+       mov  r1,@joystick_input
 *      Fire
        tb   0
        jeq  user_input_1
@@ -324,6 +363,44 @@ move_6:
 *      Return
        b    *r11
 *// move
+
+*********************************************************************************
+*
+* Initialize game
+*
+init_game:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       clr  @x
+       clr  @y
+       clr  @vx
+       clr  @vy
+       clr  @double_buffer_flag
+       clr  @frame_no
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// init_game
+
+*********************************************************************************
+*
+* One time initializations
+*
+init:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       li   r0,copy_loop_1
+       li   r1,copy_loop
+       li   r2,copy_loop_2-copy_loop_1
+       bl   @copy_memory
+       bl   @gmode
+       bl   @init_patterns
+       bl   @init_gfx
+       bl   @init_map                  ; Overwrites graphics
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// init
 
 *********************************************************************************
 *
@@ -743,5 +820,10 @@ copy_loop_1:
        jne  copy_loop_1
        b    *r11
 copy_loop_2
+
+padding:
+       bss  >400-($-map_rows)
+last_word:
+       data -1
 
        end main
