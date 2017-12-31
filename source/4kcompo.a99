@@ -236,17 +236,17 @@ update_sprites:
        mov  @joystick_input,r1
        srl  r1,1
        jeq  update_sprites_1
-       movb @dir_sprite_table(r1),r1
-;       cb   r1,@player_sprite
-;       jeq  update_sprites_1
-;       jlt  update_sprites_2
-;       ai   r1,->0100
-;       jmp  update_sprites_3
-;update_sprites_2
-;       ai   r1,>0100
-;update_sprites_3:
-;       andi r1,>0700
-;       movb r1,@player_sprite
+       movb @dir_sprite_table(r1),r2
+       mov  @player_sprite,r1
+       cb   r2,r1
+       jeq  update_sprites_1
+       jlt  update_sprites_2
+       ai   r1,>0040
+       jmp  update_sprites_3
+update_sprites_2
+       ai   r1,->0040
+update_sprites_3:
+       mov  r1,@player_sprite
        sla  r1,2
        ai   r1,>a000
        li   r0,spratb+2
