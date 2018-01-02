@@ -31,36 +31,40 @@ vdpwa  equ  >8c02                      ; VDP set read/write address
 vdprd  equ  >8800                      ; VDP read data
 vdpsta equ  >8802                      ; VDP status
 sound  equ  >8400
+grmrd  equ  >9800                      ; GROM read data (GROM base)
+grmra  equ  >9802                      ; GROM read address+1
+grmwd  equ  >9C00
+grmwa  equ  >9C02
 
 **
 * VDP memory map
 *
 ptrntb equ  >0000                      ; Pattern table base 0        >0000 - >03FF (128 patterns)
 nametb equ  >0400                      ; Name table base 0           >0400 - >06FF
-                                       ; Pattern table 0 high        >0700 - >07FF (20 patterns)
+                                       ; Pattern table 0 high        >0700 - >07FF (32 patterns)
 ptrnt1 equ  >0800                      ; Pattern table base 1        >0800 - >0BFF (128 patterns)
 namet1 equ  >0c00                      ; Name table base             >0C00 - >0EFF
-                                       ; Pattern table 1 high        >0F00 - >0FFF (20 patterns)
+                                       ; Pattern table 1 high        >0F00 - >0FFF (32 patterns)
 ptrnt2 equ  >1000                      ; Pattern table base 2        >1000 - >13FF (128 patterns)
-sprptb equ  >1000                      ; Sprite pattern table base   >1400 - >16FF (24 patterns)
-                                       ; Pattern table 2 high        >1700 - >17FF (20 patterns)
+sprptb equ  >1000                      ; Sprite pattern table base   >1400 - >16FF (24 sprite patterns)
+                                       ; Pattern table 2 high        >1700 - >17FF (32 patterns)
 ptrnt3 equ  >1800                      ; Pattern table base 3        >1800 - >1BFF (128 patterns)
 spratb equ  >1C00                      ; Sprite attribute table base >1C00 - >1C7F
 colrtb equ  >1C80                      ; Color table base            >1C80 - >1CFF
                                        ; Unused                      >1D00 - >1EFF (>200 bytes)
-                                       ; Pattern table 4 high        >1F00 - >1FFF
+                                       ; Pattern table 3 high        >1F00 - >1FFF (32 patterns)
 ptrnt4 equ  >2000                      ; Pattern table base 4        >2000 - >23FF (128 patterns)
                                        ; Unused                      >2400 - >26FF (>300 bytes)
-                                       ; Pattern table 4 high        >2700 - >27FF (20 pattern)
+                                       ; Pattern table 4 high        >2700 - >27FF (32 patterns)
 ptrnt5 equ  >2800                      ; Pattern table base 5        >2800 - >2BFF (128 patterns)
                                        ; Unused                      >2C00 - >2EFF (>300 bytes)
-                                       ; Pattern table 5 high        >2F00 - >2FFF (20 pattern)
+                                       ; Pattern table 5 high        >2F00 - >2FFF (32 patterns)
 ptrnt6 equ  >3000                      ; Pattern table base 6        >3000 - >33FF (128 patterns)
                                        ; Unused                      >3400 - >36FF (>300 bytes)
-                                       ; Pattern table 6 high        >3700 - >37FF (20 pattern)
+                                       ; Pattern table 6 high        >3700 - >37FF (32 patterns)
 ptrnt7 equ  >3800                      ; Pattern table base 7        >3800 - >3BFF (128 patterns)
                                        ; Unused                      >3C00 - >3EFF (>300 bytes)
-                                       ; Pattern table 7 high        >3F00 - >3FFF (20 pattern)
+                                       ; Pattern table 7 high        >3F00 - >3FFF (32 patterns)
 
 **
 * Scratch pad
@@ -392,6 +396,7 @@ init_game:
        clr  @vy
        clr  @double_buffer_flag
        clr  @frame_no
+       clr  @player_sprite
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
@@ -632,7 +637,7 @@ init_gfx:
        mov  *r10,r11
        b    *r11
 sal_init:
-       byte >58,>58,>a0,>05,>d0
+       byte >58,>58,>a0,>08,>d0
 *// init_gfx
 
 *********************************************************************************
@@ -655,6 +660,30 @@ gmode_1:
        clr  r1
        li   r2,>4000
        bl   @vsmw
+*      Read standard character set from GROM
+       li   r0,ptrntb+>700
+       li   r3,8
+gmode_2:
+       bl   @vwad
+       li   r1,>0534                   ; GROM address of digits 0-9
+       movb r1,@grmwa
+       movb @r1lb,@grmwa
+       li   r2,80
+gmode_3:
+       movb @grmrd,@vdpwd
+       dec  r2
+       jne  gmode_3
+       li   r1,>05BC                   ; GROM address of digits 0-9
+       movb r1,@grmwa
+       movb @r1lb,@grmwa
+       li   r2,168
+gmode_4:
+       movb @grmrd,@vdpwd
+       dec  r2
+       jne  gmode_4
+       ai   r0,>800
+       dec  r3
+       jne  gmode_2
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
