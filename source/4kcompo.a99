@@ -673,7 +673,7 @@ gmode_3:
        movb @grmrd,@vdpwd
        dec  r2
        jne  gmode_3
-       li   r1,>05BC                   ; GROM address of digits 0-9
+       li   r1,>05BC                   ; GROM address of letters A-Z
        movb r1,@grmwa
        movb @r1lb,@grmwa
        li   r2,168
