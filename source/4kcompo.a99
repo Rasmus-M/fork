@@ -203,6 +203,7 @@ update_name_table:
        mov  r5,@double_buffer_y
        mov  r5,r6
        sra r5,5                        ; Row offset
+       inc  r5
        andi r6,>001c                   ; Pixel row offset * 4
 *      Row loop
        clr  r3
@@ -237,6 +238,7 @@ update_name_table_1:
 *
 update_sprites:
        mov  r11,*r10+                  ; Push return address onto the stack
+*      Player
        mov  @joystick_input,r1
        srl  r1,1
        jeq  update_sprites_1
@@ -256,8 +258,46 @@ update_sprites_3:
        li   r0,spratb+2
        bl   @vsbw
 update_sprites_1:
-*      Expect we will do more her
-;
+*      Tiles
+       li   r0,spratb+4
+       bl   @vwad
+*      Start x
+       mov  @x,r4
+       sla  r4,6
+       neg  r4
+       ab   @sal_init+1,r4
+       ai   r4,->4000
+*      Start y
+       mov  @y,r5
+       sla  r5,6
+       neg  r5
+       ab   @sal_init,r5
+       ai   r5,->4000
+*      Pattern
+       li   r6,>8000
+*      Row loop
+       clr  r3
+update_sprites_4:
+*      Column loop
+       clr  r2
+update_sprites_5:
+       movb r5,*r13
+       movb r4,*r13
+       movb r6,*r13
+       movb @tile_color,*r13
+*      Next column
+       ai   r4,>4000
+       inc  r2
+       ci   r2,4
+       jne  update_sprites_5
+*      Next row
+       ai   r4,->c000
+       ai   r5,>4000
+       inc  r3
+       ci   r3,3
+       jne  update_sprites_4
+*      End marker
+       movb @sal_init+4,*r13
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
@@ -270,15 +310,15 @@ dir_sprite_table:
        byte >02                        ; 4 Up
        byte >07                        ; 5 Up + left
        byte >05                        ; 6 Up + right
-       byte >00                        ; 7 Up + left + right (N/A)
+       byte >05                        ; 7 Up + left + right (N/A)
        byte >06                        ; 8 Down
        byte >01                        ; 9 Down + left
        byte >03                        ; A Down + right
-       byte >00                        ; B Down + left + right (N/A)
-*      byte >00                        ; C Up + down (N/A)
-*      byte >00                        ; D Up + down + left (N/A)
-*      byte >00                        ; E Up + down + right (N/A)
-*      byte >00                        ; F Up + down + left + right (N/A)
+       byte >03                        ; B Down + left + right (N/A)
+       byte >02                        ; C Up + down (N/A)
+       byte >07                        ; D Up + down + left (N/A)
+       byte >05                        ; E Up + down + right (N/A)
+       byte >05                        ; F Up + down + left + right (N/A)
 *// update_sprites
 
 *********************************************************************************
@@ -638,6 +678,8 @@ init_gfx:
        b    *r11
 sal_init:
        byte >58,>58,>a0,>08,>d0
+tile_color:
+       byte >05
 *// init_gfx
 
 *********************************************************************************
