@@ -19,9 +19,9 @@
 * Constants
 *
 win_width:
-       equ  24
+       equ  32
 win_height:
-       equ  24
+       equ  22
 
 **
 * Memory mapped addresses
@@ -76,6 +76,10 @@ r0lb   equ  wrksp+1                    ; r0 low byte required for VDP routines
 r1lb   equ  wrksp+3
 r2lb   equ  wrksp+5
 r3lb   equ  wrksp+7
+r4lb   equ  wrksp+9
+r5lb   equ  wrksp+11
+r6lb   equ  wrksp+13
+r7lb   equ  wrksp+15
 stack  equ  wrksp+>20                  ; Stack (grows up)
 padvar equ  stack+>20                  ; Start of pad variables
 *
@@ -108,7 +112,7 @@ double_buffer_y:
 copy_loop:
        equ  double_buffer_y+2
 pad_max:
-       equ  copy_loop+22
+       equ  copy_loop+26
 
 ********************************************************************************
 *
@@ -213,8 +217,8 @@ update_name_table_1:
        andi r1,7                       ; Mod 8
        sla  r1,1                       ; To word offset
        mov  @map_row_index(r1),r1      ; Map row number
-       a    r6,r1
-       sla  r1,5                       ; Multiply by 32
+       a    r6,r1                      ; Add pixel row offset
+       sla  r1,4                       ; Multiply by 16
        ai   r1,map_rows
        a    r4,r1                      ; Add column offset
 *      Column loop
@@ -255,26 +259,26 @@ update_sprites_3:
        mov  r1,@player_sprite
        sla  r1,2
        ai   r1,>a000
-       li   r0,spratb+2
+       li   r0,spratb+16+2
        bl   @vsbw
 update_sprites_1:
 *      Tiles
-       li   r0,spratb+4
+       li   r0,spratb+16+4
        bl   @vwad
 *      Start x
        mov  @x,r4
        sla  r4,6
        neg  r4
-       ab   @sal_init+1,r4
+       ab   @player_init+1,r4
        ai   r4,->4000
 *      Start y
        mov  @y,r5
        sla  r5,6
        neg  r5
-       ab   @sal_init,r5
+       ab   @player_init,r5
        ai   r5,->4000
-*      Pattern
-       li   r6,>8000
+*      Pattern and color
+       li   r6,>8005
 *      Row loop
        clr  r3
 update_sprites_4:
@@ -284,11 +288,11 @@ update_sprites_5:
        movb r5,*r13
        movb r4,*r13
        movb r6,*r13
-       movb @tile_color,*r13
+       movb @r6lb,*r13
 *      Next column
        ai   r4,>4000
        inc  r2
-       ci   r2,4
+       ci   r2,3
        jne  update_sprites_5
 *      Next row
        ai   r4,->c000
@@ -297,7 +301,7 @@ update_sprites_5:
        ci   r3,3
        jne  update_sprites_4
 *      End marker
-       movb @sal_init+4,*r13
+       movb @player_init+4,*r13
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
@@ -469,8 +473,8 @@ init:
 *
 init_map:
        li   r0,map_rows
-       li   r1,map_rows+128
-       li   r2,7*128
+       li   r1,map_rows+64
+       li   r2,7*64
        li   r3,>1000
 init_map_1:
        movb *r0+,r4
@@ -666,20 +670,35 @@ init_gfx:
        li   r0,sprptb+>400
        li   r1,SPR8
        li   r2,16*32
-       bl   @vdpcp
+       bl   @vmbw
 *      Sprite attributes
        li   r0,spratb
-       li   r1,sal_init
+       bl   @vwad
+       li   r3,4
+init_gfx_1:
+       li   r1,mask_init
+       li   r2,4
+init_gfx_2:
+       movb *r1+,*r13
+       dec  r2
+       jne  init_gfx_2
+       dec  r3
+       jne  init_gfx_1
        li   r2,5
-       bl   @vdpcp
+init_gfx_3:
+       movb *r1+,*r13
+       dec  r2
+       jne  init_gfx_3
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
        b    *r11
-sal_init:
-       byte >58,>58,>a0,>08,>d0
-tile_color:
-       byte >05
+mask_init:
+       byte >af,>00,>00,>00
+player_init:
+       byte >58,>58,>a0,>08
+end_marker:
+       byte >d0,>00
 *// init_gfx
 
 *********************************************************************************
@@ -750,9 +769,7 @@ vregs:
 * R0 LSB: Value to write
 *
 vwtr:
-       swpb r0
-       movb r0,@vdpwa                  ; Send low byte (value) to write to VDP register
-       swpb r0
+       movb @r0lb,@vdpwa               ; Send low byte (value) to write to VDP register
        ori  r0,>8000                   ; Set up a VDP register write operation (10)
        movb r0,@vdpwa                  ; Send high byte (address) of VDP register
        b    *r11
@@ -767,9 +784,7 @@ vwtr:
 * R0 is modified, but can be restored with: ANDI R0,>3FFF
 *
 vwad:
-       swpb r0
-       movb r0,@vdpwa                  ; Send low byte of VDP RAM write address
-       swpb r0
+       movb @r0lb,@vdpwa               ; Send low byte of VDP RAM write address
        ori  r0,>4000                   ; Set read/write bits 14 and 15 to write (01)
        movb r0,@vdpwa                  ; Send high byte of VDP RAM write address
        b    *r11
@@ -785,9 +800,7 @@ vwad:
 * R0 is modified, but can be restored with: ANDI R0,>3FFF
 *
 vsbw:
-       swpb r0
-       movb r0,@vdpwa                  ; Send low byte of VDP RAM write address
-       swpb r0
+       movb @r0lb,@vdpwa               ; Send low byte of VDP RAM write address
        ori  r0,>4000                   ; Set read/write bits 14 and 15 to write (01)
        movb r0,@vdpwa                  ; Send high byte of VDP RAM write address
        movb r1,*r13                    ; Write byte to VDP RAM
@@ -805,13 +818,11 @@ vsbw:
 * R0 is modified, but can be restored with: ANDI R0,>3FFF
 *
 vsmw:
-       swpb r0
-       movb r0,@vdpwa                  ; Send low byte of VDP RAM write address
-       swpb r0
+       movb @r0lb,@vdpwa               ; Send low byte of VDP RAM write address
        ori  r0,>4000                   ; Set read/write bits 14 and 15 to write (01)
        movb r0,@vdpwa                  ; Send high byte of VDP RAM write address
 vsmw_1:
-       movb r1,@vdpwd                  ; Write byte to VDP RAM
+       movb r1,*r13                    ; Write byte to VDP RAM
        dec  r2
        jne  vsmw_1
        b    *r11
@@ -819,33 +830,20 @@ vsmw_1:
 
 *********************************************************************
 *
-* Fast CPU to VDP copy, replaces VMBW
+* VDP Multiply Byte Write
 *
 * R0: Destination address
 * R1: Source address
 * R2: Number of bytes to copy
 *
-vdpcp:
-       mov  r11,*r10+                  ; Push return address onto the stack
-       swpb r0
-       movb r0,@vdpwa                  ; Send low byte of VDP RAM write address
-       swpb r0
-       ori  r0,>4000                   ; Set the two MSbits to 01 for write
+vmbw:
+       movb @r0lb,@vdpwa               ; Send low byte of VDP RAM write address
+       ori  r0,>4000                   ; Set read/write bits 14 and 15 to write (01)
        movb r0,@vdpwa                  ; Send high byte of VDP RAM write address
-vdpcp0:
-       mov  r2,r0
-       srl  r2,3                       ; Number of groups of 8
-       jeq  vdpcp2
-       bl   @copy_loop
-       andi r0,>0007                   ; Isolate number of remaining bytes
-       jeq  vdpcp3
-vdpcp2:
-       movb *r1+,*r13                  ; Write to VDP
-       dec  r0
-       jne  vdpcp2
-vdpcp3:
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
+vmbw_1:
+       movb *r1+,*r13                  ; Write byte to VDP RAM
+       dec  r2
+       jne  vmbw_1
        b    *r11
 *// vdpcp
 
@@ -860,16 +858,13 @@ vdpcp3:
 * Modifies R0-R2
 *
 vmbr:
-       swpb r0
-       movb r0,@vdpwa                  ; Send low byte of VDP RAM write address
-       swpb r0
+       movb @r0lb,@vdpwa               ; Send low byte of VDP RAM write address
        movb r0,@vdpwa                  ; Send high byte of VDP RAM write address
-vmbr0:
        li   r0,vdprd
-vmbr1:
+vmbr_1:
        movb *r0,*r1+                   ; Read byte from VDP RAM
        dec  r2                         ; Byte counter
-       jne  vmbr1                      ; Check if finished
+       jne  vmbr_1                     ; Check if finished
        b    *r11
 *// vmbr
 
@@ -903,6 +898,7 @@ copy_loop_1:
        movb *r1+,*r13
        movb *r1+,*r13
        movb *r1+,*r13
+       ai   r1,-8
        dec  r2
        jne  copy_loop_1
        b    *r11
