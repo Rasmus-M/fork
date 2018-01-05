@@ -268,12 +268,14 @@ update_sprites_1:
        bl   @vwad
 *      Start x
        mov  @x,r4
-       sra  r4,2
+       sla  r4,5
+       sra  r4,7                       ; -256 - 255
        neg  r4
        ai   r4,center_x->40
 *      Start y
        mov  @y,r5
-       sra  r5,2
+       sla  r5,5
+       sra  r5,7                       ; -256 - 255
        neg  r5
        ai   r5,center_y->40
 *      Pattern and color
