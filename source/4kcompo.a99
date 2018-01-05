@@ -268,41 +268,45 @@ update_sprites_1:
        bl   @vwad
 *      Start x
        mov  @x,r4
-       sla  r4,6
+       sra  r4,2
        neg  r4
-       ab   @player_init+1,r4
-       ai   r4,->4000
+       ai   r4,center_x->40
 *      Start y
        mov  @y,r5
-       sla  r5,6
+       sra  r5,2
        neg  r5
-       ab   @player_init,r5
-       ai   r5,->4000
+       ai   r5,center_y->40
 *      Pattern and color
-       li   r6,>8005
+       li   r6,>8000
 *      Row loop
        clr  r3
 update_sprites_4:
 *      Column loop
        clr  r2
 update_sprites_5:
-       movb r5,*r13
-       movb r4,*r13
-       movb r6,*r13
-
-       mov  r2,r0
-       a    r3,r0
-       andi r0,>000f
+       mov  r4,r0
+       ci   r0,>ff
+       jgt  update_sprites_6
+       li   r7,>0400
+       ci   r0,>20
+       jgt  update_sprites_2
+       ai   r0,>20
+       jlt  update_sprites_6
+       ori  r7,>8000
+update_sprites_2:
+       movb @r5lb,*r13
        movb @r0lb,*r13
-
+       movb r6,*r13
+       movb r7,*r13
 *      Next column
-       ai   r4,>4000
+update_sprites_6:
+       ai   r4,>40
        inc  r2
        ci   r2,3
        jne  update_sprites_5
 *      Next row
-       ai   r4,->c000
-       ai   r5,>4000
+       ai   r4,->c0
+       ai   r5,>40
        inc  r3
        ci   r3,3
        jne  update_sprites_4
