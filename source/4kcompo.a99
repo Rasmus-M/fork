@@ -22,6 +22,10 @@ win_width:
        equ  32
 win_height:
        equ  22
+center_x:
+       equ  >78
+center_y:
+       equ  >58
 
 **
 * Memory mapped addresses
@@ -112,7 +116,7 @@ double_buffer_y:
 copy_loop:
        equ  double_buffer_y+2
 pad_max:
-       equ  copy_loop+26
+       equ  copy_loop+24
 
 ********************************************************************************
 *
@@ -124,6 +128,7 @@ main:
        lwpi wrksp                      ; Setup workspace
        li   r10,stack                  ; Setup stack pointer
        li   r13,vdpwd                  ; Do not change
+       bl   @f18a_detect
        bl   @init
        bl   @init_game
        bl   @update_name_table
@@ -198,6 +203,8 @@ update_name_table:
        andi r0,>0002
        ori  r0,>0001
        sla  r0,10
+       bl   @vwad
+       li   r0,8
 *      Tile offsets
        mov  @x,r4
        mov  r4,@double_buffer_x
@@ -207,7 +214,6 @@ update_name_table:
        mov  r5,@double_buffer_y
        mov  r5,r6
        sra r5,5                        ; Row offset
-       inc  r5
        andi r6,>001c                   ; Pixel row offset * 4
 *      Row loop
        clr  r3
@@ -222,11 +228,9 @@ update_name_table_1:
        ai   r1,map_rows
        a    r4,r1                      ; Add column offset
 *      Column loop
-       bl   @vwad
        li   r2,win_width/8
        bl   @copy_loop
 *      Next row
-       ai   r0,32
        inc  r3
        ci   r3,win_height
        jlt  update_name_table_1
@@ -250,11 +254,8 @@ update_sprites:
        mov  @player_sprite,r1
        cb   r2,r1
        jeq  update_sprites_1
-       jlt  update_sprites_2
-       ai   r1,>0040
-       jmp  update_sprites_3
-update_sprites_2
        ai   r1,->0040
+       andi r1,>07ff
 update_sprites_3:
        mov  r1,@player_sprite
        sla  r1,2
@@ -288,7 +289,12 @@ update_sprites_5:
        movb r5,*r13
        movb r4,*r13
        movb r6,*r13
-       movb @r6lb,*r13
+
+       mov  r2,r0
+       a    r3,r0
+       andi r0,>000f
+       movb @r0lb,*r13
+
 *      Next column
        ai   r4,>4000
        inc  r2
@@ -696,7 +702,7 @@ init_gfx_3:
 mask_init:
        byte >af,>00,>00,>00
 player_init:
-       byte >58,>58,>a0,>08
+       byte center_y,center_x,>a0,>08
 end_marker:
        byte >d0,>00
 *// init_gfx
@@ -760,6 +766,42 @@ vregs:
        byte sprptb/>800                ; Sprite pattern table
        byte >01                        ; Backdrop color
 *// gmode
+
+********************************************************************************
+*
+* F18A detection
+*
+f18a_detect:
+       mov  r11,*r10+                  ; Push return address onto the stack
+*      F18A  Unlock
+       li   r0,>391c                   ; VR1/57, value 00011100
+       bl   @vwtr                      ; Write once
+       bl   @vwtr                      ; Write twice, unlock
+*      Disable interrupts
+       li   r0,>01c2
+       bl   @vwtr
+*      Check the version status reg
+       mov  @vdpsta,r0                  ; Clear status
+       li   r0,>0f01                    ; Set to read reg 1, Identity
+       bl   @vwtr
+       movb @vdpsta,r0
+       andi r0,>f000
+       ci   r0,>e000
+       jne  f18a_detect_1
+*      Set four sprites per line
+       li   r0, >1e04
+       bl   @vwtr
+f18a_detect_1:
+       li   r0, >0f00                   ; Set to read reg 0
+       bl   @vwtr
+*      Enable interrupts
+       li   r0, >01e2                   ; Set Reg 1 to a sane value
+       bl   @vwtr                      ; Write
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10, r11
+       b    *r11
+*// f18a_detect
 
 *********************************************************************
 *
@@ -898,7 +940,7 @@ copy_loop_1:
        movb *r1+,*r13
        movb *r1+,*r13
        movb *r1+,*r13
-       ai   r1,-8
+       s    r0,r1
        dec  r2
        jne  copy_loop_1
        b    *r11
