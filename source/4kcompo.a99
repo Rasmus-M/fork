@@ -55,7 +55,8 @@ sprptb equ  >1000                      ; Sprite pattern table base   >1400 - >16
 ptrnt3 equ  >1800                      ; Pattern table base 3        >1800 - >1BFF (128 patterns)
 spratb equ  >1C00                      ; Sprite attribute table base >1C00 - >1C7F
 colrtb equ  >1C80                      ; Color table base            >1C80 - >1CFF
-                                       ; Unused                      >1D00 - >1EFF (>200 bytes)
+sprat1 equ  >1D00                      ; Sprite attribute table base >1D00 - >1D7F
+                                       ; Unused                      >1D80 - >1EFF (>180 bytes)
                                        ; Pattern table 3 high        >1F00 - >1FFF (32 patterns)
 ptrnt4 equ  >2000                      ; Pattern table base 4        >2000 - >23FF (128 patterns)
                                        ; Unused                      >2400 - >26FF (>300 bytes)
@@ -134,11 +135,10 @@ main:
        bl   @update_name_table
 main_loop:
        bl   @vsync
-       bl   @set_pattern_table
-       bl   @set_name_table
-       bl   @update_sprites
+       bl   @set_vdp_tables
        bl   @user_input
        bl   @move
+       bl   @update_sprites
        bl   @update_name_table
        inc  @frame_no
        jmp  main_loop
@@ -160,85 +160,33 @@ vsync_1:
 
 *********************************************************************************
 *
-* Set pattern table according to horizontal scroll offset
+* Set VDP tables
 *
-set_pattern_table:
+set_vdp_tables:
        mov  r11,*r10+                  ; Push return address onto the stack
+*      Set pattern table according to horizontal scroll offset
        mov  @double_buffer_x,r0
        sra  r0,2                       ; Shift out sub-pixels
        andi r0,>0007                   ; Isolate pixels
        ori  r0,>0400
        bl   @vwtr
-*      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
-*// set_pattern_table
-
-*********************************************************************************
-*
-* Flip name table
-*
-set_name_table:
-       mov  r11,*r10+                  ; Push return address onto the stack
+*      Flip name table
        mov  @double_buffer_flag,r0
        andi r0,>0002
        ori  r0,>0201
        bl   @vwtr
+*      Set sprite attribute table
+       mov  @double_buffer_flag,r0
+       andi r0,>0002
+       ori  r0,>0538
+       bl   @vwtr
+*      Flip double buffer flag
        inv  @double_buffer_flag
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
        b    *r11
-*// set_name_table
-
-*********************************************************************************
-*
-* Update name table
-*
-update_name_table:
-       mov  r11,*r10+                  ; Push return address onto the stack
-*      VDP address
-       mov  @double_buffer_flag,r0
-       andi r0,>0002
-       ori  r0,>0001
-       sla  r0,10
-       bl   @vwad
-       li   r0,8
-*      Tile offsets
-       mov  @x,r4
-       mov  r4,@double_buffer_x
-       sra  r4,5                       ; Shift out pixels and sub-pixels
-       andi r4,7                       ; Column offset
-       mov  @y,r5
-       mov  r5,@double_buffer_y
-       mov  r5,r6
-       sra r5,5                        ; Row offset
-       andi r6,>001c                   ; Pixel row offset * 4
-*      Row loop
-       clr  r3
-update_name_table_1:
-       mov  r3,r1                      ; Row
-       a    r5,r1                      ; Add row offset
-       andi r1,7                       ; Mod 8
-       sla  r1,1                       ; To word offset
-       mov  @map_row_index(r1),r1      ; Map row number
-       a    r6,r1                      ; Add pixel row offset
-       sla  r1,4                       ; Multiply by 16
-       ai   r1,map_rows
-       a    r4,r1                      ; Add column offset
-*      Column loop
-       li   r2,win_width/8
-       bl   @copy_loop
-*      Next row
-       inc  r3
-       ci   r3,win_height
-       jlt  update_name_table_1
-*      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
-*// update_name_table
+*// set_vdp_tables
 
 *********************************************************************************
 *
@@ -246,26 +194,28 @@ update_name_table_1:
 *
 update_sprites:
        mov  r11,*r10+                  ; Push return address onto the stack
+*      VDP address
+       mov  @double_buffer_flag,r0
+       andi r0,>0002
+       ori  r0,>0038
+       sla  r0,7
 *      Player
        mov  @joystick_input,r1
        srl  r1,1
-       jeq  update_sprites_1
        movb @dir_sprite_table(r1),r2
        mov  @player_sprite,r1
        cb   r2,r1
        jeq  update_sprites_1
        ai   r1,->0040
        andi r1,>07ff
-update_sprites_3:
+update_sprites_1:
        mov  r1,@player_sprite
        sla  r1,2
        ai   r1,>a000
-       li   r0,spratb+16+2
+       ai   r0,16+2
        bl   @vsbw
-update_sprites_1:
+       movb @player_init+3,*r13
 *      Tiles
-       li   r0,spratb+16+4
-       bl   @vwad
 *      Start x
        mov  @x,r4
        sla  r4,5
@@ -336,6 +286,69 @@ dir_sprite_table:
        byte >05                        ; E Up + down + right (N/A)
        byte >05                        ; F Up + down + left + right (N/A)
 *// update_sprites
+
+*********************************************************************************
+*
+* Update name table
+*
+update_name_table:
+       mov  r11,*r10+                  ; Push return address onto the stack
+*      VDP address
+       mov  @double_buffer_flag,r0
+       andi r0,>0002
+       ori  r0,>0001
+       sla  r0,10
+       bl   @vwad
+       li   r0,8
+*      Tile offsets
+       mov  @x,r4
+       mov  r4,@double_buffer_x
+       sra  r4,5                       ; Shift out pixels and sub-pixels
+       andi r4,7                       ; Column offset
+       mov  @y,r5
+       mov  r5,@double_buffer_y
+       mov  r5,r6
+       sra r5,5                        ; Row offset
+       andi r6,>001c                   ; Pixel row offset * 4
+*      Row loop
+       clr  r3
+update_name_table_1:
+       mov  r3,r1                      ; Row
+       a    r5,r1                      ; Add row offset
+       andi r1,7                       ; Mod 8
+       sla  r1,1                       ; To word offset
+       mov  @map_row_index(r1),r1      ; Map row number
+       a    r6,r1                      ; Add pixel row offset
+       sla  r1,4                       ; Multiply by 16
+       ai   r1,map_rows
+       a    r4,r1                      ; Add column offset
+*      Column loop
+       li   r2,win_width/8
+       bl   @copy_loop
+*      Next row
+       inc  r3
+       ci   r3,win_height
+       jlt  update_name_table_1
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*      Copy loop
+copy_loop_1:
+       movb *r1+,*r13                  ; Write to VDP
+       movb *r1+,*r13
+       movb *r1+,*r13
+       movb *r1+,*r13
+       movb *r1+,*r13
+       movb *r1+,*r13
+       movb *r1+,*r13
+       movb *r1+,*r13
+       s    r0,r1
+       dec  r2
+       jne  copy_loop_1
+       b    *r11
+copy_loop_2
+*// update_name_table
 
 *********************************************************************************
 *
@@ -662,7 +675,7 @@ to_pattern:
 init_gfx:
        mov  r11,*r10+                  ; Push return address onto the stack
 *      Name tables
-       li   r1,>ff00
+       li   r1,>e000
        li   r0,nametb
        li   r2,>300
        bl   @vsmw
@@ -685,6 +698,8 @@ init_gfx:
        bl   @vmbw
 *      Sprite attributes
        li   r0,spratb
+       li   r4,2
+init_gfx_0:
        bl   @vwad
        li   r3,4
 init_gfx_1:
@@ -701,6 +716,10 @@ init_gfx_3:
        movb *r1+,*r13
        dec  r2
        jne  init_gfx_3
+*      Next table
+       ai   r0,>100
+       dec  r4
+       jne  init_gfx_0
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
@@ -733,27 +752,28 @@ gmode_1:
        clr  r1
        li   r2,>4000
        bl   @vsmw
-*      Read standard character set from GROM
+*      Read character set from GROM
        li   r0,ptrntb+>700
        li   r3,8
 gmode_2:
        bl   @vwad
-       li   r1,>0534                   ; GROM address of digits 0-9
-       movb r1,@grmwa
-       movb @r1lb,@grmwa
-       li   r2,80
+       li   r4,charset
+       li   r5,32
 gmode_3:
-       movb @grmrd,@vdpwd
-       dec  r2
-       jne  gmode_3
-       li   r1,>05BC                   ; GROM address of letters A-Z
+       clr  r1
+       movb *r4+,@r1lb
+       ai   r1,-32
+       sla  r1,3
+       ai   r1,1204
        movb r1,@grmwa
        movb @r1lb,@grmwa
-       li   r2,168
+       li   r2,8
 gmode_4:
-       movb @grmrd,@vdpwd
+       movb @grmrd,*r13
        dec  r2
        jne  gmode_4
+       dec  r5
+       jne  gmode_3
        ai   r0,>800
        dec  r3
        jne  gmode_2
@@ -934,26 +954,10 @@ copy_memory:
 *********************************************************************
 
        copy "graphics.a99"
+       copy "charset.a99"
 
 *********************************************************************
 
-copy_loop_1:
-       movb *r1+,*r13                  ; Write to VDP
-       movb *r1+,*r13
-       movb *r1+,*r13
-       movb *r1+,*r13
-       movb *r1+,*r13
-       movb *r1+,*r13
-       movb *r1+,*r13
-       movb *r1+,*r13
-       s    r0,r1
-       dec  r2
-       jne  copy_loop_1
-       b    *r11
-copy_loop_2
-
-padding:
-       bss  >400-($-map_rows)
 last_word:
        data -1
 
