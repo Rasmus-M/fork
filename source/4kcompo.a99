@@ -26,6 +26,20 @@ center_x:
        equ  >78
 center_y:
        equ  >58
+start_x:
+       equ  >0060
+start_y:
+       equ  >0060
+chr_space:
+       equ  >e0
+chr_plus:
+       equ  >e3
+chr_minus:
+       equ  >e5
+chr_zero:
+       equ  >e7
+chr_question:
+       equ  >f3
 
 **
 * Memory mapped addresses
@@ -92,9 +106,9 @@ padvar equ  stack+>20                  ; Start of pad variables
 *
 frame_no:
        equ  padvar
-x:                                     ; mmmmmmmmtttpppss
-       equ  frame_no+2                 ; m=metatile, t=tile, p=pixel, s=sub-pixel
-y:                                     ; mmmmmmmmtttpppss
+x:                                     ; smmmmmmmtttpppff
+       equ  frame_no+2                 ; s=sign, m=metatile, t=tile, p=pixel, f=fraction
+y:                                     ; smmmmmmmtttpppff
        equ  x+2
 vx:                                    ; ppppppppssssssss
        equ  y+2
@@ -114,8 +128,10 @@ double_buffer_x:
        equ  double_buffer_flag+2
 double_buffer_y:
        equ  double_buffer_x+2
+buffer:
+       equ  double_buffer_y+2          ; 32 bytes buffer
 copy_loop:
-       equ  double_buffer_y+2
+       equ  buffer+32
 pad_max:
        equ  copy_loop+24
 
@@ -129,7 +145,7 @@ main:
        lwpi wrksp                      ; Setup workspace
        li   r10,stack                  ; Setup stack pointer
        li   r13,vdpwd                  ; Do not change
-       bl   @f18a_detect
+       bl   @f18a_init
        bl   @init
        bl   @init_game
        bl   @update_name_table
@@ -140,6 +156,7 @@ main_loop:
        bl   @move
        bl   @update_sprites
        bl   @update_name_table
+       bl   @display_position
        inc  @frame_no
        jmp  main_loop
 *// main
@@ -190,6 +207,109 @@ set_vdp_tables:
 
 *********************************************************************************
 *
+* User input
+*
+user_input:
+       clr  @ax
+       clr  @ay
+*      Read joystick #1 using CRU
+       li   r12,>0024                  ; CRU address of the column decoder
+       li   r0,>0600                   ; Column 6, i.e joystick #1
+       ldcr r0,3                       ; Select it
+       li   r12,>0006                  ; Base CRU address for joystick 1
+       stcr r1,8
+       inv  r1
+       andi r1,>ff00
+       mov  r1,r0
+       swpb r1
+       mov  r1,@joystick_input
+*      Up
+       sla  r0,4
+       jnc  user_input_1
+       li   r1,->0020
+       mov  r1,@ay
+user_input_1:
+*      Down
+       sla  r0,1
+       jnc  user_input_2
+       li   r1,>0020
+       mov  r1,@ay
+user_input_2:
+*      Right
+       sla  r0,1
+       jnc  user_input_3
+       li   r1,>0020
+       mov  r1,@ax
+user_input_3:
+*      Left
+       sla  r0,1
+       jnc  user_input_4
+       li   r1,->0020
+       mov  r1,@ax
+user_input_4:
+*      Fire
+       sla  r0,1
+       jnc  user_input_5
+       ;      TODO
+user_input_5:
+       b    *r11
+*// user_input
+
+*********************************************************************************
+*
+* Move player
+*
+move:
+*      X
+       mov  @vx,r0                     ; Velocity
+       mov  @ax,r1
+       jeq  move_1
+*      Accelerate
+       a    r1,r0
+       jmp  move_3
+*      Decelerate
+move_1:
+       mov  r0,r1                      ; Velocity
+       jlt  move_2
+       ci   r1,>00c0
+       jgt  move_2
+       clr  r0                         ; Stop
+       jmp  move_3
+move_2:
+       sra  r1,6                       ; Divide velocity by 16
+       s    r1,r0                      ; Subtract from velocity
+move_3:
+       mov  r0,@vx                     ; Save velocity
+       sra  r0,8                       ; Shift to LSB
+       a    r0,@x                      ; Add to position
+*      Y
+       mov  @vy,r0                     ; Velocity
+       mov  @ay,r1
+       jeq  move_4
+*      Accelerate
+       a    r1,r0
+       jmp  move_6
+*      Decelerate
+move_4:
+       mov  r0,r1                      ; Velocity
+       jlt  move_5
+       ci   r1,>00c0
+       jgt  move_5
+       clr  r0                         ; Stop
+       jmp  move_6
+move_5:
+       sra  r1,6                       ; Divide velocity by 16
+       s    r1,r0                      ; Subtract from velocity
+move_6:
+       mov  r0,@vy                     ; Save velocity
+       sra  r0,8                       ; Shift to LSB
+       a    r0,@y                      ; Add to position
+*      Return
+       b    *r11
+*// move
+
+*********************************************************************************
+*
 * Update sprites
 *
 update_sprites:
@@ -221,13 +341,13 @@ update_sprites_1:
        sla  r4,5
        sra  r4,7                       ; -256 - 255
        neg  r4
-       ai   r4,center_x->40
+       ai   r4,center_x->40+>18
 *      Start y
        mov  @y,r5
        sla  r5,5
        sra  r5,7                       ; -256 - 255
        neg  r5
-       ai   r5,center_y->40
+       ai   r5,center_y->40+>18
 *      Pattern and color
        li   r6,>8000
 *      Row loop
@@ -293,11 +413,7 @@ dir_sprite_table:
 *
 update_name_table:
        mov  r11,*r10+                  ; Push return address onto the stack
-*      VDP address
-       mov  @double_buffer_flag,r0
-       andi r0,>0002
-       ori  r0,>0001
-       sla  r0,10
+       bl   @get_nt_address
        bl   @vwad
        li   r0,8
 *      Tile offsets
@@ -352,106 +468,37 @@ copy_loop_2
 
 *********************************************************************************
 *
-* User input
+* Display position
 *
-user_input:
-       clr  @ax
-       clr  @ay
-*      Read joystick #1 using CRU
-       li   r12,>0024                  ; CRU address of the column decoder
-       li   r0,>0600                   ; Column 6, i.e joystick #1
-       ldcr r0,3                       ; Select it
-       li   r12,>0006                  ; Base CRU address for joystick 1
-       stcr r1,8
-       inv  r1
-       andi r1,>ff00
-       mov  r1,r0
-       swpb r1
-       mov  r1,@joystick_input
-*      Up
-       sla  r0,4
-       jnc  user_input_1
-       li   r1,->0020
-       mov  r1,@ay
-user_input_1:
-*      Down
-       sla  r0,1
-       jnc  user_input_2
-       li   r1,>0020
-       mov  r1,@ay
-user_input_2:
-*      Right
-       sla  r0,1
-       jnc  user_input_3
-       li   r1,>0020
-       mov  r1,@ax
-user_input_3:
-*      Left
-       sla  r0,1
-       jnc  user_input_4
-       li   r1,->0020
-       mov  r1,@ax
-user_input_4:
-*      Fire
-       sla  r0,1
-       jnc  user_input_5
-;      TODO
-user_input_5:
+display_position:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       bl   @get_nt_address
+       ai   r0,23*32+2
+       bl   @vwad
+       mov  @x,r1
+       bl   @display_byte
+       bl   @get_nt_address
+       ai   r0,23*32+9
+       bl   @vwad
+       mov  @y,r1
+       bl   @display_byte
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
        b    *r11
-*// user_input
+*// init_game
 
 *********************************************************************************
 *
-* Move player
+* Get address of current name table double buffer
 *
-move:
-*      X
-       mov  @vx,r0                     ; Velocity
-       mov  @ax,r1
-       jeq  move_1
-*      Accelerate
-       a    r1,r0
-       jmp  move_3
-*      Decelerate
-move_1:
-       mov  r0,r1                      ; Velocity
-       jlt  move_2
-       ci   r1,>00c0
-       jgt  move_2
-       clr  r0                         ; Stop
-       jmp  move_3
-move_2:
-       sra  r1,6                       ; Divide velocity by 16
-       s    r1,r0                      ; Subtract from velocity
-move_3:
-       mov  r0,@vx                     ; Save velocity
-       sra  r0,8                       ; Shift to LSB
-       a    r0,@x                      ; Add to position
-*      Y
-       mov  @vy,r0                     ; Velocity
-       mov  @ay,r1
-       jeq  move_4
-*      Accelerate
-       a    r1,r0
-       jmp  move_6
-*      Decelerate
-move_4:
-       mov  r0,r1                      ; Velocity
-       jlt  move_5
-       ci   r1,>00c0
-       jgt  move_5
-       clr  r0                         ; Stop
-       jmp  move_6
-move_5:
-       sra  r1,6                       ; Divide velocity by 16
-       s    r1,r0                      ; Subtract from velocity
-move_6:
-       mov  r0,@vy                     ; Save velocity
-       sra  r0,8                       ; Shift to LSB
-       a    r0,@y                      ; Add to position
-*      Return
+get_nt_address:
+       mov  @double_buffer_flag,r0
+       andi r0,>0002
+       ori  r0,>0001
+       sla  r0,10
        b    *r11
-*// move
+*// get_nt_address
 
 *********************************************************************************
 *
@@ -459,8 +506,10 @@ move_6:
 *
 init_game:
        mov  r11,*r10+                  ; Push return address onto the stack
-       clr  @x
-       clr  @y
+       li   r0,start_x
+       mov  r0,@x
+       li   r0,start_y
+       mov  r0,@y
        clr  @vx
        clr  @vy
        clr  @double_buffer_flag
@@ -485,6 +534,9 @@ init:
        bl   @gmode
        bl   @init_patterns
        bl   @init_gfx
+       li   r0,23*32
+       li   r1,status_text
+       bl   @display_text
        bl   @init_map                  ; Overwrites graphics
 *      Return
        dect r10                        ; Pop return address off the stack
@@ -663,9 +715,9 @@ vscroll_4:
        mov  *r10,r11
        b    *r11
 from_pattern:
-       bss  8
+       equ  buffer
 to_pattern:
-       bss  8
+       equ  buffer+8
 *// vscroll
 
 *********************************************************************************
@@ -675,7 +727,7 @@ to_pattern:
 init_gfx:
        mov  r11,*r10+                  ; Push return address onto the stack
 *      Name tables
-       li   r1,>e000
+       li   r1,chr_space*256
        li   r0,nametb
        li   r2,>300
        bl   @vsmw
@@ -795,9 +847,11 @@ vregs:
 
 ********************************************************************************
 *
-* F18A detection
+* F18A initalize
 *
-f18a_detect:
+* If an F18A is present we need to set the number of sprites per line to four.
+*
+f18a_init:
        mov  r11,*r10+                  ; Push return address onto the stack
 *      F18A  Unlock
        li   r0,>391c                   ; VR1/57, value 00011100
@@ -813,11 +867,11 @@ f18a_detect:
        movb @vdpsta,r0
        andi r0,>f000
        ci   r0,>e000
-       jne  f18a_detect_1
+       jne  f18a_init_1
 *      Set four sprites per line
        li   r0, >1e04
        bl   @vwtr
-f18a_detect_1:
+f18a_init_1:
        li   r0, >0f00                   ; Set to read reg 0
        bl   @vwtr
 *      Enable interrupts
@@ -827,14 +881,14 @@ f18a_detect_1:
        dect r10                        ; Pop return address off the stack
        mov  *r10, r11
        b    *r11
-*// f18a_detect
+*// f18a_init
 
 *********************************************************************
 *
 * VDP Write To Register
 *
-* R0 MSB: VDP register to write to
-* R0 LSB: Value to write
+* r0 MSB: VDP register to write to
+* r0 LSB: Value to write
 *
 vwtr:
        movb @r0lb,@vdpwa               ; Send low byte (value) to write to VDP register
@@ -847,9 +901,9 @@ vwtr:
 *
 * VDP Set Write Address
 *
-* R0: Write address in VDP RAM
+* r0: Write address in VDP RAM
 *
-* R0 is modified, but can be restored with: ANDI R0,>3FFF
+* r0 is modified, but can be restored with: ANDI R0,>3FFF
 *
 vwad:
        movb @r0lb,@vdpwa               ; Send low byte of VDP RAM write address
@@ -862,10 +916,10 @@ vwad:
 *
 * VDP Single Byte Write
 *
-* R0: Write address in VDP RAM
-* R1: MSB of R1 sent to VDP RAM
+* r0: Write address in VDP RAM
+* r1: MSB of R1 sent to VDP RAM
 *
-* R0 is modified, but can be restored with: ANDI R0,>3FFF
+* r0 is modified, but can be restored with: ANDI R0,>3FFF
 *
 vsbw:
        movb @r0lb,@vdpwa               ; Send low byte of VDP RAM write address
@@ -879,11 +933,11 @@ vsbw:
 *
 * VDP Single Byte Multiple Write
 *
-* R0: Write address in VDP RAM
-* R1: MSB of R1 sent to VDP RAM
-* R2: Number of bytes to send
+* r0: Write address in VDP RAM
+* r1: MSB of R1 sent to VDP RAM
+* r2: Number of bytes to send
 *
-* R0 is modified, but can be restored with: ANDI R0,>3FFF
+* r0 is modified, but can be restored with: ANDI R0,>3FFF
 *
 vsmw:
        movb @r0lb,@vdpwa               ; Send low byte of VDP RAM write address
@@ -900,9 +954,9 @@ vsmw_1:
 *
 * VDP Multiply Byte Write
 *
-* R0: Destination address
-* R1: Source address
-* R2: Number of bytes to copy
+* r0: Destination address
+* r1: Source address
+* r2: Number of bytes to copy
 *
 vmbw:
        movb @r0lb,@vdpwa               ; Send low byte of VDP RAM write address
@@ -919,9 +973,9 @@ vmbw_1:
 *
 * VDP Multiple Byte Read
 *
-* R0: Starting read address in VDP RAM
-* R1: Starting write address in CPU RAM
-* R2: Number of bytes to read from VDP RAM
+* r0: Starting read address in VDP RAM
+* r1: Starting write address in CPU RAM
+* r2: Number of bytes to read from VDP RAM
 *
 * Modifies R0-R2
 *
@@ -940,9 +994,9 @@ vmbr_1:
 *
 * Copy memory
 *
-* R0: Source address
-* R1: Destination address
-* R2: Length
+* r0: Source address
+* r1: Destination address
+* r2: Length
 *
 copy_memory:
        mov  *r0+,*r1+
@@ -950,6 +1004,97 @@ copy_memory:
        jne  copy_memory
        b    *r11
 *// copy_memory
+
+*********************************************************************
+*
+* Display signed byte as decimal
+*
+* r1: Byte to display in MSB
+* VDP address must already be set up.
+*
+display_byte:
+       sra  r1,8
+       jgt  display_byte_0
+       jlt  display_byte_1
+       movb @space,*r13
+       jmp  display_byte_2
+display_byte_0:
+       movb @plus,*r13
+       jmp  display_byte_2
+display_byte_1:
+       movb @minus,*r13
+       neg  r1
+display_byte_2:
+       li   r2,2
+       li   r3,divisors
+display_byte_3:
+       clr  r0
+       div  *r3+,r0
+       ai   r0,chr_zero
+       movb @r0lb,*r13
+       dec  r2
+       jne  display_byte_3
+       ai   r1,chr_zero
+       movb @r1lb,*r13
+       b    *r11
+plus:
+       byte chr_plus
+minus:
+       byte chr_minus
+space:
+       byte chr_space
+divisors:
+       data 100,10
+*// display_byte
+
+*********************************************************************************
+*
+* Display text to both name table buffers (slow)
+*
+* r0: VDP offset
+* r1: Points to zero terminated ascii text
+*
+display_text:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       ai   r0,nametb
+       bl   @vwad
+       li   r2,buffer
+display_text_0:
+       movb *r1+,r4
+       jeq  display_text_4
+       li   r5,charset
+       clr  r6
+display_text_1:
+       cb   r4,*r5+
+       jeq  display_text_2
+       inc  r6
+       ci   r6,32
+       jlt  display_text_1
+       li   r6,chr_question
+       jmp  display_text_3
+display_text_2:
+       ai   r6,>00e0
+display_text_3:
+       swpb r6
+       movb r6,*r13
+       movb r6,*r2+
+       jmp  display_text_0
+*      2nd name table buffer
+display_text_4:
+       ai   r0,namet1-nametb
+       li   r1,buffer
+       ai   r2,-buffer
+       bl   @vmbw
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// display_text
+
+status_text:
+       text "X=-000 Y=-000 GO TO ( 000, 000)"
+       byte 0
+       even
 
 *********************************************************************
 
