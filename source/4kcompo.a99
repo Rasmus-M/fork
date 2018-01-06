@@ -11,11 +11,6 @@
        def  main
 
 **
-* Assembly options
-*
-
-
-**
 * Constants
 *
 win_width:
@@ -163,12 +158,14 @@ main:
 main_loop:
        bl   @vsync
        bl   @set_vdp_tables
+       bl   @check_position
        bl   @user_input
        bl   @move
        bl   @update_sprites
        bl   @calculate_nt_address
        bl   @update_name_table
        bl   @display_position
+       bl   @display_time_left
        inc  @frame_no
        jmp  main_loop
 *// main
@@ -216,6 +213,24 @@ set_vdp_tables:
        mov  *r10,r11
        b    *r11
 *// set_vdp_tables
+
+*********************************************************************************
+*
+* Check position
+*
+check_position:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       cb   @x,@goto_x
+       jne  check_position_1
+       cb   @y,@goto_y
+       jne  check_position_1
+       bl   @update_goto_position
+*      Return
+check_position_1:
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// check_position
 
 *********************************************************************************
 *
@@ -528,9 +543,36 @@ display_goto_position:
 
 *********************************************************************************
 *
+* Display time left
+*
+display_time_left:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       mov  @time_left,r0
+       jeq  display_time_left_1
+       ai   r0,-4
+       mov  r0,@time_left
+       andi r0,>00ff
+       jne  display_time_left_1
+       li   r0,23*32+10+nametb
+       bl   @vwad
+       mov  @time_left,r1
+       bl   @display_unsigned_byte
+       li   r0,23*32+10+namet1
+       bl   @vwad
+       mov  @time_left,r1
+       bl   @display_unsigned_byte
+*      Return
+display_time_left_1:
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// display_time_left
+
+*********************************************************************************
+*
 * update goto positions
 *
-update_goto:
+update_goto_position:
        mov  r11,*r10+                  ; Push return address onto the stack
        bl   @rand
        mov  r0,@goto_x
@@ -542,11 +584,13 @@ update_goto:
        li   r0,namet1
        mov  r0,@double_buffer_address
        bl   @display_goto_position
+       li   r0,>6400
+       mov  r0,@time_left
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
        b    *r11
-*// update_goto
+*// update_goto_position
 
 *********************************************************************************
 *
@@ -576,7 +620,7 @@ init_game:
        clr  @double_buffer_flag
        clr  @frame_no
        clr  @player_sprite
-       bl   @update_goto
+       bl   @update_goto_position
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
@@ -598,7 +642,10 @@ init:
        bl   @init_patterns
        bl   @init_gfx
        li   r0,22*32
-       li   r1,status_text
+       li   r1,text_line_1
+       bl   @display_text
+       li   r0,23*32
+       li   r1,text_line_2
        bl   @display_text
        bl   @init_map                  ; Overwrites graphics
 *      Return
@@ -1078,28 +1125,31 @@ copy_memory:
 * r1: Byte to display in MSB
 * VDP address must already be set up.
 *
+display_unsigned_byte:
+       sra  r1,8
+       jmp  display_byte_3
 display_byte:
        sra  r1,8
-       jgt  display_byte_0
-       jlt  display_byte_1
+       jgt  display_byte_1
+       jlt  display_byte_2
        movb @space,*r13
-       jmp  display_byte_2
-display_byte_0:
-       movb @plus,*r13
-       jmp  display_byte_2
+       jmp  display_byte_3
 display_byte_1:
+       movb @plus,*r13
+       jmp  display_byte_3
+display_byte_2:
        movb @minus,*r13
        neg  r1
-display_byte_2:
+display_byte_3:
        li   r2,2
        li   r3,divisors
-display_byte_3:
+display_byte_4:
        clr  r0
        div  *r3+,r0
        ai   r0,chr_zero
        movb @r0lb,*r13
        dec  r2
-       jne  display_byte_3
+       jne  display_byte_4
        ai   r1,chr_zero
        movb @r1lb,*r13
        b    *r11
@@ -1175,10 +1225,13 @@ rand:
 
 *********************************************************************
 
-status_text:
-       text "X=-000 Y=-000 GOTO X=-000 Y=-000"
+text_line_1:
+       text "X= 000 Y= 000 GOTO X= 000 Y= 000"
        byte 0
-       even
+text_line_2:
+       text "TIME LEFT:100"
+       byte 0
+      even
 
        copy "graphics.a99"
        copy "charset.a99"
