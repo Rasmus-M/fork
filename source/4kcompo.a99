@@ -132,8 +132,14 @@ double_buffer_x:
        equ  double_buffer_address+2
 double_buffer_y:
        equ  double_buffer_x+2
+goto_x:
+       equ  double_buffer_y+2
+goto_y:
+       equ  goto_x+2
+time_left:
+       equ  goto_y+2
 buffer:
-       equ  double_buffer_y+2          ; 32 bytes buffer
+       equ  time_left+2                ; 32 bytes buffer
 copy_loop:
        equ  buffer+32
 pad_max:
@@ -496,7 +502,51 @@ display_position:
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
        b    *r11
-*// init_game
+*// display_position
+
+*********************************************************************************
+*
+* Display goto position
+*
+display_goto_position:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       mov  @double_buffer_address,r0
+       ai   r0,22*32+21
+       bl   @vwad
+       mov  @goto_x,r1
+       bl   @display_byte
+       mov  @double_buffer_address,r0
+       ai   r0,22*32+28
+       bl   @vwad
+       mov  @goto_y,r1
+       bl   @display_byte
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// display_goto_position
+
+*********************************************************************************
+*
+* update goto positions
+*
+update_goto:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       bl   @rand
+       mov  r0,@goto_x
+       bl   @rand
+       mov  r0,@goto_y
+       li   r0,nametb
+       mov  r0,@double_buffer_address
+       bl   @display_goto_position
+       li   r0,namet1
+       mov  r0,@double_buffer_address
+       bl   @display_goto_position
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// update_goto
 
 *********************************************************************************
 *
@@ -526,6 +576,7 @@ init_game:
        clr  @double_buffer_flag
        clr  @frame_no
        clr  @player_sprite
+       bl   @update_goto
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
