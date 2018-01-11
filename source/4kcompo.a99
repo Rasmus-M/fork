@@ -28,13 +28,13 @@ start_y:
 chr_space:
        equ  >e0
 chr_plus:
-       equ  >e3
+       equ  >e1
 chr_minus:
-       equ  >e5
+       equ  >e3
 chr_zero:
-       equ  >e7
+       equ  >e5
 chr_question:
-       equ  >f3
+       equ  >f1
 
 **
 * Memory mapped addresses
@@ -553,11 +553,11 @@ display_time_left:
        mov  r0,@time_left
        andi r0,>00ff
        jne  display_time_left_1
-       li   r0,23*32+10+nametb
+       li   r0,23*32+5+nametb
        bl   @vwad
        mov  @time_left,r1
        bl   @display_unsigned_byte
-       li   r0,23*32+10+namet1
+       li   r0,23*32+5+namet1
        bl   @vwad
        mov  @time_left,r1
        bl   @display_unsigned_byte
@@ -1229,7 +1229,7 @@ text_line_1:
        text "X= 000 Y= 000 GOTO X= 000 Y= 000"
        byte 0
 text_line_2:
-       text "TIME LEFT:100"
+       text "TIME:100 SCORE:00000 LVS:3 LVL:1"
        byte 0
       even
 
