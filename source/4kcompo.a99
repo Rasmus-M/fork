@@ -348,28 +348,33 @@ update_sprites_2:
        ai   r0,16+2
        bl   @vsbw
        movb @player_init+3,*r13
-*      Goto sprite
-       mov  @y,r4
-       andi r4,>fffc
-       neg  r4
-       a    @goto_y,r4
+*      Other sprites
+       mov  @y,r6
+       andi r6,>fffc
+       neg  r6
+       mov  @x,r7
+       andi r7,>fffc
+       neg  r7
+       li   r2,5
+       li   r3,sprites
+update_sprites_5:
+       mov  r6,r4
+       a    *r3,r4
        sra  r4,2
-       ai   r4,center_y                ; +>18
+       ai   r4,center_y
        ci   r4,191
        jgt  update_sprites_4
        ci   r4,-15
        jlt  update_sprites_4
-       mov  @x,r5
-       andi r5,>fffc
-       neg  r5
-       a    @goto_x,r5
+       mov  r7,r5
+       a    @2(r3),r5
        sra  r5,2
-       ai   r5,center_x                ; +>18
+       ai   r5,center_x
        ci   r5,255
        jgt  update_sprites_4
        ci   r5,-31
        jlt  update_sprites_4
-       li   r0,>c00a
+       mov  @4(r3),r0
        ci   r5,0
        jgt  update_sprites_3
        ai   r5,32
@@ -381,53 +386,9 @@ update_sprites_3:
        movb r0,*r13
        movb @r0lb,*r13
 update_sprites_4:
-;*      Tiles
-;*      Start x
-;       mov  @x,r4
-;       sla  r4,5
-;       sra  r4,7                       ; -256 - 255
-;       neg  r4
-;       ai   r4,center_x->40+>18
-;*      Start y
-;       mov  @y,r5
-;       sla  r5,5
-;       sra  r5,7                       ; -256 - 255
-;       neg  r5
-;       ai   r5,center_y->40+>18
-;*      Pattern and color
-;       li   r6,>8000
-;*      Row loop
-;       clr  r3
-;update_sprites_4:
-;*      Column loop
-;       clr  r2
-;update_sprites_5:
-;       mov  r4,r0
-;       ci   r0,>ff
-;       jgt  update_sprites_6
-;       li   r7,>0400
-;       ci   r0,>20
-;       jgt  update_sprites_2
-;       ai   r0,>20
-;       jlt  update_sprites_6
-;       ori  r7,>8000
-;update_sprites_2:
-;       movb @r5lb,*r13
-;       movb @r0lb,*r13
-;       movb r6,*r13
-;       movb r7,*r13
-;*      Next column
-;update_sprites_6:
-;       ai   r4,>40
-;       inc  r2
-;       ci   r2,3
-;       jne  update_sprites_5
-;*      Next row
-;       ai   r4,->c0
-;       ai   r5,>40
-;       inc  r3
-;       ci   r3,3
-;       jne  update_sprites_4
+       ai   r3,6
+       dec  r2
+       jne  update_sprites_5
 *      End marker
        movb @player_init+4,*r13
 *      Return
@@ -451,6 +412,22 @@ dir_sprite_table:
        byte >07                        ; D Up + down + left (N/A)
        byte >05                        ; E Up + down + right (N/A)
        byte >05                        ; F Up + down + left + right (N/A)
+sprites:
+       data >0000                      ; Y
+       data >0000                      ; X
+       data >c00a                      ; Pattern and color
+       data >0160
+       data >0160
+       data >c405
+       data >ff60
+       data >0160
+       data >c405
+       data >0160
+       data >ff60
+       data >c405
+       data >ff60
+       data >ff60
+       data >c405
 *// update_sprites
 
 *********************************************************************************
@@ -617,11 +594,13 @@ update_goto_position:
        ori  r0,>0060
 ;      li   r0,>0160
        mov  r0,@goto_x
+       mov  r0,@sprites+2
        bl   @rand
        andi r0,>ff00
        ori  r0,>0060
 ;      li   r0,>0160
        mov  r0,@goto_y
+       mov  r0,@sprites
        li   r0,nametb
        mov  r0,@double_buffer_address
        bl   @display_goto_position
@@ -671,6 +650,9 @@ init_game:
        clr  @double_buffer_flag
        clr  @frame_no
        clr  @player_sprite
+       clr  @lives
+       clr  @level
+       clr  @score
        bl   @update_goto_position
 *      Return
        dect r10                        ; Pop return address off the stack

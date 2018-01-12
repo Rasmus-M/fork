@@ -2,7 +2,7 @@ IF EXIST skyway.dsk GOTO :dskok
 xdm99.py 4kcompo.dsk --initialize DSSD -n 4KCOMPO
 :dskok
 
-xas99.py -R -L 4kcompo.lst source/4kcompo.a99
+xas99.py -R -S -L 4kcompo.lst source/4kcompo.a99
 
 xas99.py -R -i source/4kcompo.a99 -o 4kcompo
 
