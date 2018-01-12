@@ -1155,14 +1155,22 @@ copy_memory:
 
 *********************************************************************
 *
-* Display signed byte as decimal
+* Display unsigned byte
 *
 * r1: Byte to display in MSB
-* VDP address must already be set up.
 *
 display_unsigned_byte:
        sra  r1,8
-       jmp  display_byte_3
+       li   r2,2
+       jmp  display_decimal
+*// display_unsigned_byte
+
+*********************************************************************
+*
+* Display byte
+*
+* r1: Byte to display in MSB
+*
 display_byte:
        sra  r1,8
        jgt  display_byte_1
@@ -1177,26 +1185,40 @@ display_byte_2:
        neg  r1
 display_byte_3:
        li   r2,2
-       li   r3,divisors
-display_byte_4:
-       clr  r0
-       div  *r3+,r0
-       ai   r0,chr_zero
-       movb @r0lb,*r13
-       dec  r2
-       jne  display_byte_4
-       ai   r1,chr_zero
-       movb @r1lb,*r13
-       b    *r11
+       jmp  display_decimal
 plus:
        byte chr_plus
 minus:
        byte chr_minus
 space:
        byte chr_space
+
+*********************************************************************
+*
+* Display decimal number
+* VDP address must already be set up.
+*
+* r1: number to display
+* r2: number of digits
+*
+display_decimal:
+       li   r3,4
+       s    r2,r3
+       sla  r3,1
+       ai   r3,divisors
+display_decimal_1:
+       clr  r0
+       div  *r3+,r0
+       ai   r0,chr_zero
+       movb @r0lb,*r13
+       dec  r2
+       jne  display_decimal_1
+       ai   r1,chr_zero
+       movb @r1lb,*r13
+       b    *r11
 divisors:
-       data 100,10
-*// display_byte
+       data 10000,1000,100,10
+*// display_decimal
 
 *********************************************************************************
 *
