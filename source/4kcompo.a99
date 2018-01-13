@@ -895,6 +895,7 @@ vmbr_1:
 * Data that should reside after initilization
 *
        copy "charset.a99"
+       copy "map.a99"
 
 *********************************************************************
 *
@@ -914,12 +915,12 @@ text_line_2:
        text "TIME:100 SCORE:00000 LVS:3 LVL:1"
        byte 0
 
-       copy "map.a99"
        copy "graphics.a99"
 
+map_rows:
+       equ  text_line_1
+
 sprite_list:
-
-
        data >0000                      ; Y
        data >0000                      ; X
        data >c00a                      ; Pattern and color

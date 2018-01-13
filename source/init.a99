@@ -32,14 +32,35 @@ init:
 * Initialize map
 *
 init_map:
-       li   r0,map_rows
-       li   r1,map_rows+64
-       li   r2,7*64
-       li   r3,>1000
+       li   r0,map_1                   ; Source
+       li   r1,map_rows                ; Destination
+       li   r2,8                       ; Offset counter
+       clr  r7                         ; Offset byte
 init_map_1:
-       movb *r0+,r4
-       ab   r3,r4
-       movb r4,*r1+
+       li   r3,4                       ; Row counter
+init_map_2:
+       li   r4,2                       ; Times per row
+init_map_3:
+       li   r5,4                       ; Bytes per time
+init_map_4:
+       movb *r0+,r6                    ; Get source byte
+       srl  r6,4                       ; Shift top nybble into position
+       ab   r7,r6                      ; Add offset
+       movb r6,*r1+                    ; Copy to destination
+       sla  r6,4                       ; Shift bottom nybble into position
+       andi r6,>0f00                   ; Isolate bottom nybble
+       ab   r7,r6                      ; Add offset
+       movb r6,*r1+                    ; Copy to destination
+       dec  r5
+       jne  init_map_4
+       ai   r0,-4                      ; Back to start of source row
+       dec  r4
+       jne  init_map_3
+       ai   r0,4                       ; To next source row
+       dec  r3
+       jne  init_map_2
+       ai   r7,>1000                   ; Increase offset
+       ai   r0,-16                     ; Back to start of map
        dec  r2
        jne  init_map_1
 *      Return
