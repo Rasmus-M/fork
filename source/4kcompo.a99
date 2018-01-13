@@ -183,6 +183,8 @@ vsync_1:
        tb   2                          ; Test CRU bit for VDP interrupt
        jeq  vsync_1
        movb @vdpsta,r12
+       andi r12,>8000
+       mov  r12,@coinc
        b    *r11
 *// vsync
 
@@ -479,6 +481,8 @@ copy_loop_2
 *
 check_position:
        mov  r11,*r10+                  ; Push return address onto the stack
+       mov  @coinc,r0
+       jeq  check_position_1
        mov  @x,r0
        s    @goto_x,r0
        abs  r0
