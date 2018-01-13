@@ -19,7 +19,7 @@ init:
        li   r1,text_line_2
        bl   @display_text
        bl   @init_map                  ; Overwrites graphics
-       li   r0,>01e2
+       li   r0,>01e2                   ; Disable blanking
        bl   @vwtr
 *      Return
        dect r10                        ; Pop return address off the stack
