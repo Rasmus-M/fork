@@ -160,12 +160,12 @@ main:
 main_loop:
        bl   @vsync
        bl   @set_vdp_tables
+       bl   @check_collisions
        bl   @user_input
        bl   @move
        bl   @update_sprites
        bl   @calculate_nt_address
        bl   @update_name_table
-       bl   @check_position
        bl   @display_position
        bl   @display_time_left
        inc  @frame_no
@@ -217,6 +217,33 @@ set_vdp_tables:
        mov  *r10,r11
        b    *r11
 *// set_vdp_tables
+
+*********************************************************************************
+*
+* Check for sprite collisions
+*
+check_collisions:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       mov  @coinc,r0
+       jeq  check_collision_1
+       mov  @x,r0
+       s    @goto_x,r0
+       abs  r0
+       ci   r0,>0040
+       jgt  check_collision_1
+       mov  @y,r0
+       s    @goto_y,r0
+       abs  r0
+       ci   r0,>0040
+       jgt  check_collision_1
+*      Collision
+       bl   @update_goto_position
+*      Return
+check_collision_1:
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// check_collisions
 
 *********************************************************************************
 *
@@ -420,6 +447,19 @@ dir_sprite_table:
 
 *********************************************************************************
 *
+* Calculate address of current name table double buffer
+*
+calculate_nt_address:
+       mov  @double_buffer_flag,r0
+       andi r0,>0002
+       ori  r0,>0001
+       sla  r0,10
+       mov  r0,@double_buffer_address
+       b    *r11
+*// calculate_nt_address
+
+*********************************************************************************
+*
 * Update name table
 *
 update_name_table:
@@ -474,33 +514,6 @@ copy_loop_1:
        b    *r11
 copy_loop_2
 *// update_name_table
-
-*********************************************************************************
-*
-* Check position
-*
-check_position:
-       mov  r11,*r10+                  ; Push return address onto the stack
-       mov  @coinc,r0
-       jeq  check_position_1
-       mov  @x,r0
-       s    @goto_x,r0
-       abs  r0
-       ci   r0,>0040
-       jgt  check_position_1
-       mov  @y,r0
-       s    @goto_y,r0
-       abs  r0
-       ci   r0,>0040
-       jgt  check_position_1
-*      Collision
-       bl   @update_goto_position
-*      Return
-check_position_1:
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
-*// check_position
 
 *********************************************************************************
 *
@@ -575,7 +588,7 @@ display_time_left_1:
 
 *********************************************************************************
 *
-* update goto position
+* Update goto position
 *
 update_goto_position:
        mov  r11,*r10+                  ; Push return address onto the stack
@@ -620,16 +633,16 @@ update_goto_position:
 
 *********************************************************************************
 *
-* Calculate address of current name table double buffer
+* Create tile sprite
 *
-calculate_nt_address:
-       mov  @double_buffer_flag,r0
-       andi r0,>0002
-       ori  r0,>0001
-       sla  r0,10
-       mov  r0,@double_buffer_address
+create_tile_sprite:
+       mov  r11,*r10+                  ; Push return address onto the stack
+
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
        b    *r11
-*// calculate_nt_address
+*// create_tile_sprite
 
 *********************************************************************************
 *
@@ -658,19 +671,7 @@ init_game:
 
 *********************************************************************
 *
-* Display unsigned byte
-*
-* r1: Byte to display in MSB
-*
-display_unsigned_byte:
-       sra  r1,8
-       li   r2,2
-       jmp  display_decimal
-*// display_unsigned_byte
-
-*********************************************************************
-*
-* Display byte
+* Display signed byte
 *
 * r1: Byte to display in MSB
 *
@@ -695,6 +696,18 @@ minus:
        byte chr_minus
 space:
        byte chr_space
+
+*********************************************************************
+*
+* Display unsigned byte
+*
+* r1: Byte to display in MSB
+*
+display_unsigned_byte:
+       sra  r1,8
+       li   r2,2
+       jmp  display_decimal
+*// display_unsigned_byte
 
 *********************************************************************
 *
@@ -919,23 +932,10 @@ text_line_2:
 
 map_rows:
        equ  text_line_1
-
 sprite_list:
-       data >0000                      ; Y
-       data >0000                      ; X
-       data >c00a                      ; Pattern and color
-       data >0160
-       data >0160
-       data >c405
-       data >ff60
-       data >0160
-       data >c405
-       data >0160
-       data >ff60
-       data >c405
-       data >ff60
-       data >ff60
-       data >c405
+       equ  map_rows+512
+
+;       data >c405
 
 *********************************************************************
 
