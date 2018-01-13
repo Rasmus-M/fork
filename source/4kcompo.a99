@@ -35,6 +35,8 @@ chr_zero:
        equ  >e5
 chr_question:
        equ  >f1
+n_tile_sprites:
+       equ  8
 
 **
 * Memory mapped addresses
@@ -145,14 +147,14 @@ pad_max:
        equ  copy_loop+24
 
 * Sprite structure
-sprite_y:
+sprite_pattern:                        ; If 0 then not allocated
        equ  0
-sprite_x:
-       equ  2
-sprite_pattern:
-       equ  4
 sprite_color:
-       equ  5
+       equ  1
+sprite_y:
+       equ  2
+sprite_x:
+       equ  4
 sprite_size:
        equ  6
 
@@ -391,47 +393,69 @@ update_sprites_2:
        ai   r0,16+2
        bl   @vsbw
        movb @player_init+3,*r13
-*      Other sprites
+*      Tile sprites
        mov  @y,r6
        andi r6,>fffc
        neg  r6
        mov  @x,r7
        andi r7,>fffc
        neg  r7
-       li   r2,5
+       li   r2,1+n_tile_sprites
        li   r3,sprite_list
-update_sprites_5:
+update_sprites_3:
+       mov  *r3,r1
+       jeq  update_sprites_10
        mov  r6,r4
-       a    *r3,r4
+       a    @sprite_y(r3),r4
        sra  r4,2
        ai   r4,center_y
        ci   r4,191
-       jgt  update_sprites_4
+       jgt  update_sprites_5
        ci   r4,-15
-       jlt  update_sprites_4
+       jlt  update_sprites_6
        mov  r7,r5
        a    @sprite_x(r3),r5
        sra  r5,2
        ai   r5,center_x
        ci   r5,255
-       jgt  update_sprites_4
+       jgt  update_sprites_7
        ci   r5,-31
-       jlt  update_sprites_4
-       mov  @sprite_pattern(r3),r0
+       jlt  update_sprites_8
        ci   r5,0
-       jgt  update_sprites_3
+       jgt  update_sprites_4
        ai   r5,32
-       ori  r0,>0080
-update_sprites_3:
+       ori  r1,>0080
+update_sprites_4:
        dec  r4
        movb @r4lb,*r13
        movb @r5lb,*r13
-       movb r0,*r13
-       movb @r0lb,*r13
-update_sprites_4:
+       movb r1,*r13
+       movb @r1lb,*r13
+       jmp  update_sprites_10
+update_sprites_5:
+       ci   r4,383
+       jlt  update_sprites_10
+       jmp  update_sprites_9
+update_sprites_6:
+       ci   r4,-191
+       jgt  update_sprites_10
+       jmp  update_sprites_9
+update_sprites_7:
+       ci   r5,511
+       jlt  update_sprites_10
+       jmp  update_sprites_9
+update_sprites_8:
+       ci   r5,-255
+       jgt  update_sprites_10
+       jmp  update_sprites_9
+update_sprites_9:
+       ci   r3,sprite_list
+       jeq  update_sprites_10
+       bl   @spawn_tile_sprite
+update_sprites_10:
        ai   r3,sprite_size
        dec  r2
-       jne  update_sprites_5
+       jne  update_sprites_3
 *      End marker
        movb @player_init+4,*r13
 *      Return
@@ -529,6 +553,33 @@ copy_loop_2
 
 *********************************************************************************
 *
+* Display time left
+*
+display_time_left:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       mov  @time_left,r0
+       jeq  display_time_left_1
+       ai   r0,-4
+       mov  r0,@time_left
+       andi r0,>00ff
+       jne  display_time_left_1
+       li   r0,23*32+5+nametb
+       bl   @vwad
+       mov  @time_left,r1
+       bl   @display_unsigned_byte
+       li   r0,23*32+5+namet1
+       bl   @vwad
+       mov  @time_left,r1
+       bl   @display_unsigned_byte
+*      Return
+display_time_left_1:
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// display_time_left
+
+*********************************************************************************
+*
 * Display position
 *
 display_position:
@@ -573,33 +624,6 @@ display_goto_position:
 
 *********************************************************************************
 *
-* Display time left
-*
-display_time_left:
-       mov  r11,*r10+                  ; Push return address onto the stack
-       mov  @time_left,r0
-       jeq  display_time_left_1
-       ai   r0,-4
-       mov  r0,@time_left
-       andi r0,>00ff
-       jne  display_time_left_1
-       li   r0,23*32+5+nametb
-       bl   @vwad
-       mov  @time_left,r1
-       bl   @display_unsigned_byte
-       li   r0,23*32+5+namet1
-       bl   @vwad
-       mov  @time_left,r1
-       bl   @display_unsigned_byte
-*      Return
-display_time_left_1:
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
-*// display_time_left
-
-*********************************************************************************
-*
 * Update goto position
 *
 update_goto_position:
@@ -609,15 +633,15 @@ update_goto_position:
        ori  r0,>0060
 ;      li   r0,>0160
        mov  r0,@goto_x
-       mov  r0,@sprite_list+2
+       mov  r0,@sprite_list+sprite_x
        bl   @rand
        andi r0,>ff00
        ori  r0,>0060
 ;      li   r0,>0160
        mov  r0,@goto_y
-       mov  r0,@sprite_list
+       mov  r0,@sprite_list+sprite_y
        li   r0,>c00a
-       mov  r0,@sprite_list+4
+       mov  r0,@sprite_list+sprite_pattern
 *      Display position
        li   r0,nametb
        mov  r0,@double_buffer_address
@@ -645,16 +669,70 @@ update_goto_position:
 
 *********************************************************************************
 *
-* Create tile sprite
+* Allocate tile sprite
 *
-create_tile_sprite:
-       mov  r11,*r10+                  ; Push return address onto the stack
+* r0: pattern and color
+*
+* On return r3 contain the address of the allocated sprite
+* or 0 if allocation failed.
+*
+alloc_tile_sprite:
+       li   r2,n_tile_sprites
+       li   r3,sprite_tile_list
+alloc_tile_sprite_1:
+       mov  *r3,r1
+       jne  alloc_tile_sprite_2
+       mov  r0,*r3
+       jmp  alloc_tile_sprite_3
+alloc_tile_sprite_2:
+       ai   r3,sprite_size
+       dec  r2
+       jne  alloc_tile_sprite_1
+       clr  r3
+*      Return
+alloc_tile_sprite_3:
+       b    *r11
+*// alloc_tile_sprite
 
+*********************************************************************************
+*
+* Respawn tile sprite
+*
+* r3: address of tile sprite
+*
+spawn_tile_sprite:
+       mov  r11,*r10+                  ; Push return address onto the stack
+*      x
+       bl   @rand
+       sra  r0,6                       ; -4 - 3 meta tiles
+       jlt  spawn_tile_sprite_1
+       ai   r0,>0200                   ; 2 - 5
+       jmp  spawn_tile_sprite_2
+spawn_tile_sprite_1:
+       ai   r0,->0100                  , -5 - -2
+spawn_tile_sprite_2:
+       a    @x,r0
+       andi r0,>ff00                   ; Round to meta tiles
+       ori  r0,>0060                   ; Center on meta tile
+       mov  r0,@sprite_x(r3)
+*      y
+       bl   @rand
+       sra  r0,6                       ; -4 - 3 meta tiles
+       jlt  spawn_tile_sprite_3
+       ai   r0,>0200                   ; 2 - 5
+       jmp  spawn_tile_sprite_4
+spawn_tile_sprite_3:
+       ai   r0,->0100                  : -5 - -2
+spawn_tile_sprite_4:
+       a    @y,r0
+       andi r0,>ff00                   ; Round to meta tiles
+       ori  r0,>0060                   ; Center on meta tile
+       mov  r0,@sprite_y(r3)
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
        b    *r11
-*// create_tile_sprite
+*// spawn_tile_sprite
 
 *********************************************************************************
 *
@@ -675,6 +753,15 @@ init_game:
        clr  @level
        clr  @score
        bl   @update_goto_position
+       li   r8,n_tile_sprites
+       li   r3,sprite_tile_list
+init_game_1:
+       li   r0,>c405
+       mov  r0,*r3
+       bl   @spawn_tile_sprite
+       ai   r3,sprite_size
+       dec  r8
+       jne  init_game_1
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
@@ -948,8 +1035,6 @@ sprite_list:
        equ  map_rows+512
 sprite_tile_list:
        equ  sprite_list+sprite_size
-
-;       data >c405
 
 *********************************************************************
 
