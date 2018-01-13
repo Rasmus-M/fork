@@ -144,6 +144,18 @@ copy_loop:
 pad_max:
        equ  copy_loop+24
 
+* Sprite structure
+sprite_y:
+       equ  0
+sprite_x:
+       equ  2
+sprite_pattern:
+       equ  4
+sprite_color:
+       equ  5
+sprite_size:
+       equ  6
+
 ********************************************************************************
 *
 * Main program
@@ -398,14 +410,14 @@ update_sprites_5:
        ci   r4,-15
        jlt  update_sprites_4
        mov  r7,r5
-       a    @2(r3),r5
+       a    @sprite_x(r3),r5
        sra  r5,2
        ai   r5,center_x
        ci   r5,255
        jgt  update_sprites_4
        ci   r5,-31
        jlt  update_sprites_4
-       mov  @4(r3),r0
+       mov  @sprite_pattern(r3),r0
        ci   r5,0
        jgt  update_sprites_3
        ai   r5,32
@@ -417,7 +429,7 @@ update_sprites_3:
        movb r0,*r13
        movb @r0lb,*r13
 update_sprites_4:
-       ai   r3,6
+       ai   r3,sprite_size
        dec  r2
        jne  update_sprites_5
 *      End marker
@@ -934,6 +946,8 @@ map_rows:
        equ  text_line_1
 sprite_list:
        equ  map_rows+512
+sprite_tile_list:
+       equ  sprite_list+sprite_size
 
 ;       data >c405
 
