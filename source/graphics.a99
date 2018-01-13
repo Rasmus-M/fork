@@ -14,36 +14,36 @@ pat0:
 * Transition Character Pairs (from, to) 
 ****************************************
 hchars:
-       BYTE >00,>01                    ; #00
-       BYTE >01,>01                    ; #01
-       BYTE >01,>02                    ; #02
-       BYTE >02,>00                    ; #03
-       BYTE >01,>03                    ; #04
-       BYTE >03,>03                    ; #05
-       BYTE >03,>04                    ; #06
-       BYTE >04,>01                    ; #07
-       BYTE >02,>05                    ; #08
-       BYTE >05,>05                    ; #09
-       BYTE >05,>06                    ; #0A
-       BYTE >06,>02                    ; #0B
+       BYTE >01                        ; #00
+       BYTE >11                        ; #01
+       BYTE >12                        ; #02
+       BYTE >20                        ; #03
+       BYTE >13                        ; #04
+       BYTE >33                        ; #05
+       BYTE >34                        ; #06
+       BYTE >41                        ; #07
+       BYTE >25                        ; #08
+       BYTE >55                        ; #09
+       BYTE >56                        ; #0A
+       BYTE >62                        ; #0B
 ****************************************
 vchars:
-       BYTE >00,>08                    ; #00
-       BYTE >01,>09                    ; #01
-       BYTE >02,>0A                    ; #02
-       BYTE >03,>0B                    ; #03
-       BYTE >04,>00                    ; #04
-       BYTE >05,>01                    ; #05
-       BYTE >06,>02                    ; #06
-       BYTE >07,>03                    ; #07
-       BYTE >04,>04                    ; #08
-       BYTE >05,>05                    ; #09
-       BYTE >06,>06                    ; #0A
-       BYTE >07,>07                    ; #0B
-       BYTE >08,>04                    ; #0C
-       BYTE >09,>05                    ; #0D
-       BYTE >0A,>06                    ; #0E
-       BYTE >0B,>07                    ; #0F
+       BYTE >08                        ; #00
+       BYTE >19                        ; #01
+       BYTE >2A                        ; #02
+       BYTE >3B                        ; #03
+       BYTE >40                        ; #04
+       BYTE >51                        ; #05
+       BYTE >62                        ; #06
+       BYTE >73                        ; #07
+       BYTE >44                        ; #08
+       BYTE >55                        ; #09
+       BYTE >66                        ; #0A
+       BYTE >77                        ; #0B
+       BYTE >84                        ; #0C
+       BYTE >95                        ; #0D
+       BYTE >A6                        ; #0E
+       BYTE >B7                        ; #0F
 
 ****************************************
 * Sprite patterns

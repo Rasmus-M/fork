@@ -97,13 +97,13 @@ hscroll_1:
 *      Scroll offset loop
        clr  r4                         ; Horizontal scroll offset (0-7)
 hscroll_2:
-       mov  *r6,r7                     ; Get from and to pattern numbers
+       movb *r6,r7                     ; Get from and to pattern numbers
        mov  r7,r8
-       andi r7,>ff00
-       srl  r7,5
+       andi r7,>f000
+       srl  r7,9
        ai   r7,pat0                    ; Address of from pattern
-       andi r8,>00ff
-       sla  r8,3
+       andi r8,>0f00
+       srl  r8,5
        ai   r8,pat0                    ; Address of to pattern
 *      Write address
        mov  r3,r0                      ; Pattern number
@@ -131,7 +131,7 @@ hscroll_4:
        ci   r4,8
        jlt  hscroll_2
 *      Next pattern
-       inct r6
+       inc  r6
        inc  r3
        ci   r3,h_patterns                      ;
        jlt  hscroll_1
@@ -154,13 +154,12 @@ vscroll:
 *      Pattern loop
        clr  r3                         ; Pattern counter
 vscroll_1:
-       mov  *r6+,r7                     ; Get from and to pattern numbers
-       swpb r7
+       movb *r6+,r7                     ; Get from and to pattern numbers
        mov  r7,r8
-       andi r7,>ff00
+       andi r7,>0f00
        srl  r7,5
-       andi r8,>00ff
-       sla  r8,3
+       andi r8,>f000
+       srl  r8,9
 *      Horizontal loop
        clr  r4                         ; Horizontal offset (0-7)
 vscroll_2:
