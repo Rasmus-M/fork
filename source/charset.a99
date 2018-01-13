@@ -11,9 +11,9 @@ charset:
 ;      byte 41    )    (Round brackets end)
 ;      byte 42    *    (Asterisk)            
        byte 43    +    (Plus sign)
-       byte 44    ,    (Comma)            
+       byte 44    ,    (Comma)             Not used
        byte 45    -    (Hyphen)            
-       byte 46    .    (Full stop , dot)            
+       byte 46    .    (Full stop , dot)   Not used
 ;      byte 47    /    (Slash)            
        byte 48    0    (Number zero)
        byte 49    1    (Number one)

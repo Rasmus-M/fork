@@ -1,0 +1,385 @@
+*********************************************************************************
+*
+* One time initializations
+*
+init:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       li   r0,copy_loop_1
+       li   r1,copy_loop
+       li   r2,copy_loop_2-copy_loop_1
+       bl   @copy_memory
+       bl   @f18a_init
+       bl   @gmode
+       bl   @init_patterns
+       bl   @init_gfx
+       li   r0,22*32
+       li   r1,text_line_1
+       bl   @display_text
+       li   r0,23*32
+       li   r1,text_line_2
+       bl   @display_text
+       bl   @init_map                  ; Overwrites graphics
+       li   r0,>01e2
+       bl   @vwtr
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// init
+
+*********************************************************************************
+*
+* Initialize map
+*
+init_map:
+       li   r0,map_rows
+       li   r1,map_rows+64
+       li   r2,7*64
+       li   r3,>1000
+init_map_1:
+       movb *r0+,r4
+       ab   r3,r4
+       movb r4,*r1+
+       dec  r2
+       jne  init_map_1
+*      Return
+       b    *r11
+*// init_map
+
+*********************************************************************************
+*
+* Scroll patterns and upload to VDP
+*
+init_patterns:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       bl   @hscroll
+       bl   @vscroll
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// init_patterns
+
+*********************************************************************************
+*
+* Scroll patterns horizontally and upload to VDP
+*
+h_patterns:
+       equ  12
+*
+hscroll:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       li   r6,hchars                 ; Pointer to from/to pattern numbers
+*      Pattern loop
+       clr  r3                         ; Pattern counter
+hscroll_1:
+*      Scroll offset loop
+       clr  r4                         ; Horizontal scroll offset (0-7)
+hscroll_2:
+       mov  *r6,r7                     ; Get from and to pattern numbers
+       mov  r7,r8
+       andi r7,>ff00
+       srl  r7,5
+       ai   r7,pat0                    ; Address of from pattern
+       andi r8,>00ff
+       sla  r8,3
+       ai   r8,pat0                    ; Address of to pattern
+*      Write address
+       mov  r3,r0                      ; Pattern number
+       sla  r0,3                       ; Multiply by 8
+       mov  r4,r1                      ; Scroll offset
+       sla  r1,11                      ; Multiply by >800
+       ai   r1,ptrntb+>400             ; Add pattern table base plus offset
+       a    r1,r0
+       bl   @vwad                      ; Setup write address
+*      Row loop
+       li   r9,8                       ; Row counter
+hscroll_3:
+       movb *r7+,r1                    ; Get from byte
+       movb *r8+,@r1lb                 ; Get to byte
+       mov  r4,r0                      ; Get scroll offset
+       jeq  hscroll_4                  ; Skip shift if zero
+       sla  r1,0
+hscroll_4:
+       movb r1,*r13                    ; Send to VDP
+*      Next row
+       dec  r9
+       jne  hscroll_3
+*      Next scroll offset
+       inc  r4
+       ci   r4,8
+       jlt  hscroll_2
+*      Next pattern
+       inct r6
+       inc  r3
+       ci   r3,h_patterns                      ;
+       jlt  hscroll_1
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// hscroll
+
+*********************************************************************************
+*
+* Scroll horizontal patterns vertically and upload to VDP
+*
+v_patterns:
+       equ  16
+*
+vscroll:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       li   r6,vchars                  ; Pointer to from/to pattern numbers
+*      Pattern loop
+       clr  r3                         ; Pattern counter
+vscroll_1:
+       mov  *r6+,r7                     ; Get from and to pattern numbers
+       swpb r7
+       mov  r7,r8
+       andi r7,>ff00
+       srl  r7,5
+       andi r8,>00ff
+       sla  r8,3
+*      Horizontal loop
+       clr  r4                         ; Horizontal offset (0-7)
+vscroll_2:
+*      Read from pattern
+       mov  r4,r0
+       sla  r0,11
+       ai   r0,ptrntb+>400
+       a    r7,r0
+       li   r1,from_pattern
+       li   r2,8
+       bl   @vmbr
+*      Read to pattern
+       mov  r4,r0
+       sla  r0,11
+       ai   r0,ptrntb+>400
+       a    r8,r0
+       li   r1,to_pattern
+       li   r2,8
+       bl   @vmbr
+*      Vertical loop
+       clr  r5                         ; Vertical offset (0-7)
+vscroll_3:
+*      Write address
+       mov  r3,r0                      ; Pattern number
+       sla  r0,3                       ; Multiply by 8
+       mov  r4,r1                      ; Horizontal scroll offset
+       sla  r1,11                      ; Multiply by >800
+       ai   r1,ptrntb                  ; Add pattern table base
+       a    r1,r0                      ; Add to address
+       mov  r5,r1                      ; Vertical scroll offset
+       sla  r1,7                       ; Multiply by >80
+       a    r1,r0                      ; Add to address
+       bl   @vwad                      ; Setup write address
+*      Row loop
+       li   r9,8                       ; Row counter
+       li   r1,from_pattern            ; Address of from/to pattern buffer
+       a    r5,r1                      ; Add vertical scroll offset
+vscroll_4:
+       movb *r1+,*r13
+       dec  r9
+       jne  vscroll_4
+*      Next vertical scroll offset
+       inc  r5
+       ci   r5,8
+       jlt  vscroll_3
+*      Next horizontal scroll offset
+       inc  r4
+       ci   r4,8
+       jlt  vscroll_2
+*      Next pattern
+       inc  r3
+       ci   r3,v_patterns                      ;
+       jlt  vscroll_1
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+from_pattern:
+       equ  buffer
+to_pattern:
+       equ  buffer+8
+*// vscroll
+
+*********************************************************************************
+*
+* Init graphics
+*
+init_gfx:
+       mov  r11,*r10+                  ; Push return address onto the stack
+*      Name tables
+       li   r1,chr_space*256
+       li   r0,nametb
+       li   r2,>300
+       bl   @vsmw
+       li   r0,namet1
+       li   r2,>300
+       bl   @vsmw
+*      Colors
+       li   r0,colrtb
+       li   r1,>1100
+       li   r2,16
+       bl   @vsmw
+       li   r0,colrtb+16
+       li   r1,>8100
+       li   r2,16
+       bl   @vsmw
+*      Sprite patterns
+       li   r0,sprptb+>400
+       li   r1,SPR8
+       li   r2,18*32
+       bl   @vmbw
+*      Sprite attributes
+       li   r0,spratb
+       li   r4,2
+init_gfx_0:
+       bl   @vwad
+       li   r3,4
+init_gfx_1:
+       li   r1,mask_init
+       li   r2,4
+init_gfx_2:
+       movb *r1+,*r13
+       dec  r2
+       jne  init_gfx_2
+       dec  r3
+       jne  init_gfx_1
+       li   r2,5
+init_gfx_3:
+       movb *r1+,*r13
+       dec  r2
+       jne  init_gfx_3
+*      Next table
+       ai   r0,>100
+       dec  r4
+       jne  init_gfx_0
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+mask_init:
+       byte >af,>00,>00,>00
+player_init:
+       byte center_y,center_x,>a0,>08
+end_marker:
+       byte >d0,>00
+*// init_gfx
+
+*********************************************************************************
+*
+* Set graphics mode
+*
+gmode:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       clr  r0
+       li   r1,vregs
+       li   r2,8
+gmode_1:
+       movb *r1+,@r0lb
+       bl   @vwtr                      ; Set register
+       ai   r0,>0100
+       dec  r2
+       jne  gmode_1
+*      Clear VDP RAM
+       clr  r0
+       clr  r1
+       li   r2,>4000
+       bl   @vsmw
+*      Read character set from GROM
+       li   r0,ptrntb+>700
+       li   r3,8
+gmode_2:
+       bl   @vwad
+       li   r4,charset
+       li   r5,32
+gmode_3:
+       clr  r1
+       movb *r4+,@r1lb
+       ai   r1,-32
+       mov  r1,r6
+       sla  r1,3
+       s    r6,r1
+       ai   r1,1716
+       movb r1,@grmwa
+       movb @r1lb,@grmwa
+       clr  *r13                       ; Top line
+       li   r2,7
+gmode_4:
+       movb @grmrd,*r13
+       dec  r2
+       jne  gmode_4
+       dec  r5
+       jne  gmode_3
+       ai   r0,>800
+       dec  r3
+       jne  gmode_2
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*      VDP registers
+vregs:
+       byte >00                        ; Graphics II mode
+       byte >a2                        ; 16K, display on, interrupt enabled
+       byte nametb/>400                ; Name table
+       byte colrtb/>40                 ; Color table
+       byte ptrntb/>800                ; Pattern table
+       byte spratb/>80                 ; Sprite attribute table
+       byte sprptb/>800                ; Sprite pattern table
+       byte >01                        ; Backdrop color
+*// gmode
+
+********************************************************************************
+*
+* F18A initalize
+*
+* If an F18A is present we need to set the number of sprites per line to four.
+*
+f18a_init:
+       mov  r11,*r10+                  ; Push return address onto the stack
+*      F18A  Unlock
+       li   r0,>391c                   ; VR1/57, value 00011100
+       bl   @vwtr                      ; Write once
+       bl   @vwtr                      ; Write twice, unlock
+*      Disable interrupts
+       li   r0,>01c2
+       bl   @vwtr
+*      Check the version status reg
+       mov  @vdpsta,r0                  ; Clear status
+       li   r0,>0f01                    ; Set to read reg 1, Identity
+       bl   @vwtr
+       movb @vdpsta,r0
+       andi r0,>f000
+       ci   r0,>e000
+       jne  f18a_init_1
+*      Set four sprites per line
+       li   r0, >1e04
+       bl   @vwtr
+f18a_init_1:
+       li   r0, >0f00                   ; Set to read reg 0
+       bl   @vwtr
+*      Enable interrupts
+       li   r0, >01e2                   ; Set Reg 1 to a sane value
+       bl   @vwtr                      ; Write
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10, r11
+       b    *r11
+*// f18a_init
+
+*********************************************************************
+*
+* Copy memory
+*
+* r0: Source address
+* r1: Destination address
+* r2: Length
+*
+copy_memory:
+       mov  *r0+,*r1+
+       dect r2
+       jne  copy_memory
+       b    *r11
+*// copy_memory
