@@ -433,19 +433,19 @@ update_sprites_4:
        movb @r1lb,*r13
        jmp  update_sprites_10
 update_sprites_5:
-       ci   r4,383
+       ci   r4,3*192
        jlt  update_sprites_10
        jmp  update_sprites_9
 update_sprites_6:
-       ci   r4,-191
+       ci   r4,-2*192
        jgt  update_sprites_10
        jmp  update_sprites_9
 update_sprites_7:
-       ci   r5,511
+       ci   r5,3*256
        jlt  update_sprites_10
        jmp  update_sprites_9
 update_sprites_8:
-       ci   r5,-255
+       ci   r5,-2*256
        jgt  update_sprites_10
        jmp  update_sprites_9
 update_sprites_9:
@@ -702,32 +702,39 @@ alloc_tile_sprite_3:
 *
 spawn_tile_sprite:
        mov  r11,*r10+                  ; Push return address onto the stack
+spawn_tile_sprite_1:
 *      x
        bl   @rand
-       sra  r0,6                       ; -4 - 3 meta tiles
-       jlt  spawn_tile_sprite_1
-       ai   r0,>0200                   ; 2 - 5
-       jmp  spawn_tile_sprite_2
-spawn_tile_sprite_1:
-       ai   r0,->0100                  , -5 - -2
-spawn_tile_sprite_2:
-       a    @x,r0
-       andi r0,>ff00                   ; Round to meta tiles
-       ori  r0,>0060                   ; Center on meta tile
-       mov  r0,@sprite_x(r3)
+       andi r0,>000f
+       ai   r0,-8                      ; -8 - 7 meta tiles
+       mov  r0,r4
 *      y
        bl   @rand
-       sra  r0,6                       ; -4 - 3 meta tiles
-       jlt  spawn_tile_sprite_3
-       ai   r0,>0200                   ; 2 - 5
-       jmp  spawn_tile_sprite_4
-spawn_tile_sprite_3:
-       ai   r0,->0100                  : -5 - -2
-spawn_tile_sprite_4:
-       a    @y,r0
-       andi r0,>ff00                   ; Round to meta tiles
-       ori  r0,>0060                   ; Center on meta tile
-       mov  r0,@sprite_y(r3)
+       andi r0,>000f
+       ai   r0,-8                      ; -8 - 7 meta tiles
+       mov  r0,r5
+*      Square of distance
+       mov  r4,r0
+       abs  r0
+       mpy r0,r0
+       mov  r1,r14
+       mov  r5,r0
+       abs  r0
+       mpy  r0,r0
+       a    r1,r14
+       ci   r14,9                      ; dist^2 < 9 <=> dist < 3
+       jlt  spawn_tile_sprite_1        ; Try again if too close
+*      Update position
+       sla  r4,8
+       a    @x,r4
+       andi r4,>ff00                   ; Round to meta tiles
+       ori  r4,>0060                   ; Center on meta tile
+       mov  r4,@sprite_x(r3)
+       sla  r5,8
+       a    @y,r5
+       andi r5,>ff00                   ; Round to meta tiles
+       ori  r5,>0060                   ; Center on meta tile
+       mov  r5,@sprite_y(r3)
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
