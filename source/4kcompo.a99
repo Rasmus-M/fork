@@ -404,7 +404,7 @@ update_sprites_2:
        li   r3,sprite_list
 update_sprites_3:
        mov  *r3,r1
-       jeq  update_sprites_10
+       jeq  update_sprites_7
        mov  r6,r4
        a    @sprite_y(r3),r4
        sra  r4,2
@@ -412,15 +412,15 @@ update_sprites_3:
        ci   r4,191
        jgt  update_sprites_5
        ci   r4,-15
-       jlt  update_sprites_6
+       jlt  update_sprites_5
        mov  r7,r5
        a    @sprite_x(r3),r5
        sra  r5,2
        ai   r5,center_x
        ci   r5,255
-       jgt  update_sprites_7
-       ci   r5,-31
-       jlt  update_sprites_8
+       jgt  update_sprites_5
+       ci   r5,-15
+       jlt  update_sprites_5
        ci   r5,0
        jgt  update_sprites_4
        ai   r5,32
@@ -431,28 +431,22 @@ update_sprites_4:
        movb @r5lb,*r13
        movb r1,*r13
        movb @r1lb,*r13
-       jmp  update_sprites_10
+       jmp  update_sprites_7
 update_sprites_5:
-       ci   r4,3*192
-       jlt  update_sprites_10
-       jmp  update_sprites_9
-update_sprites_6:
-       ci   r4,-2*192
-       jgt  update_sprites_10
-       jmp  update_sprites_9
-update_sprites_7:
-       ci   r5,3*256
-       jlt  update_sprites_10
-       jmp  update_sprites_9
-update_sprites_8:
-       ci   r5,-2*256
-       jgt  update_sprites_10
-       jmp  update_sprites_9
-update_sprites_9:
        ci   r3,sprite_list
-       jeq  update_sprites_10
+       jeq  update_sprites_7
+       ci   r4,3*192
+       jgt  update_sprites_6
+       ci   r4,-2*192
+       jlt  update_sprites_6
+       ci   r5,3*256
+       jgt  update_sprites_6
+       ci   r5,-2*256
+       jlt  update_sprites_6
+       jmp  update_sprites_7
+update_sprites_6:
        bl   @spawn_tile_sprite
-update_sprites_10:
+update_sprites_7:
        ai   r3,sprite_size
        dec  r2
        jne  update_sprites_3
