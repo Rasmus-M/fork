@@ -409,14 +409,14 @@ update_sprites_3:
        a    @sprite_y(r3),r4
        sra  r4,2
        ai   r4,center_y
-       ci   r4,191
-       jgt  update_sprites_5
-       ci   r4,-15
-       jlt  update_sprites_5
        mov  r7,r5
        a    @sprite_x(r3),r5
        sra  r5,2
        ai   r5,center_x
+       ci   r4,191
+       jgt  update_sprites_5
+       ci   r4,-15
+       jlt  update_sprites_5
        ci   r5,255
        jgt  update_sprites_5
        ci   r5,-15
@@ -435,13 +435,13 @@ update_sprites_4:
 update_sprites_5:
        ci   r3,sprite_list
        jeq  update_sprites_7
-       ci   r4,3*192
+       ci   r4,2*192
        jgt  update_sprites_6
-       ci   r4,-2*192
+       ci   r4,-1*192
        jlt  update_sprites_6
-       ci   r5,3*256
+       ci   r5,2*256
        jgt  update_sprites_6
-       ci   r5,-2*256
+       ci   r5,-1*256
        jlt  update_sprites_6
        jmp  update_sprites_7
 update_sprites_6:
