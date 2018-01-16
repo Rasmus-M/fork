@@ -239,21 +239,35 @@ set_vdp_tables:
 check_collisions:
        mov  r11,*r10+                  ; Push return address onto the stack
        mov  @coinc,r0
-       jeq  check_collision_1
+       jeq  check_collision_4
+       li   r3,sprite_list
+       li   r2,1+n_tile_sprites
+check_collisions_1:
+       mov  *r3,r0
+       jeq  check_collisions_3
        mov  @x,r0
-       s    @goto_x,r0
+       s    @sprite_x(r3),r0
        abs  r0
        ci   r0,>0040
-       jgt  check_collision_1
+       jgt  check_collisions_3
        mov  @y,r0
-       s    @goto_y,r0
+       s    @sprite_y(r3),r0
        abs  r0
        ci   r0,>0040
-       jgt  check_collision_1
+       jgt  check_collisions_3
 *      Collision
+       ci   r3,sprite_list
+       jne  check_collisions_2
        bl   @update_goto_position
+       jmp  check_collisions_4
+check_collisions_2:
+       bl   @spawn_tile_sprite
+check_collisions_3:
+       ai   r3,sprite_size
+       dec  r2
+       jne  check_collisions_1
 *      Return
-check_collision_1:
+check_collision_4:
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
        b    *r11
