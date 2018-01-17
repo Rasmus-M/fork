@@ -37,7 +37,10 @@ chr_question:
        equ  >f1
 n_tile_sprites:
        equ  8
-
+n_enemy_sprites:
+       equ  8
+n_sprites:
+       equ  n_tile_sprites+n_enemy_sprites
 **
 * Memory mapped addresses
 *
@@ -151,12 +154,16 @@ sprite_pattern:                        ; If 0 then not allocated
        equ  0
 sprite_color:
        equ  1
-sprite_y:
+sprite_x:                              ; smmmmmmmtttpppff
        equ  2
-sprite_x:
+sprite_y:                              ; smmmmmmmtttpppff
        equ  4
-sprite_size:
+sprite_vx:                             ; smmmmmmmtttpppff
        equ  6
+sprite_vy:                             ; smmmmmmmtttpppff
+       equ  8
+sprite_size:
+       equ  10
 
 ********************************************************************************
 *
@@ -177,6 +184,7 @@ main_loop:
        bl   @check_collisions
        bl   @user_input
        bl   @move
+       bl   @move_enemies
        bl   @update_sprites
        bl   @calculate_nt_address
        bl   @update_name_table
@@ -239,7 +247,7 @@ set_vdp_tables:
 check_collisions:
        mov  r11,*r10+                  ; Push return address onto the stack
        mov  @coinc,r0
-       jeq  check_collision_4
+       jeq  check_collisions_4
        li   r3,sprite_list
        li   r2,1+n_tile_sprites
 check_collisions_1:
@@ -261,13 +269,13 @@ check_collisions_1:
        bl   @update_goto_position
        jmp  check_collisions_4
 check_collisions_2:
-       bl   @spawn_tile_sprite
+       bl   @spawn_sprite
 check_collisions_3:
        ai   r3,sprite_size
        dec  r2
        jne  check_collisions_1
 *      Return
-check_collision_4:
+check_collisions_4:
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
        b    *r11
@@ -378,6 +386,24 @@ move_6:
 
 *********************************************************************************
 *
+* Move enemy sprites
+*
+move_enemies:
+       li   r2,n_enemy_sprites
+       li   r3,enemy_sprite_list
+move_enemies_1:
+       a    @sprite_vx(r3),@sprite_x(r3)
+       a    @sprite_vy(r3),@sprite_y(r3)
+move_enemies_2:
+       ai   r3,sprite_size
+       dec  r2
+       jne  move_enemies_1
+*      Return
+       b    *r11
+*// move_enemies
+
+*********************************************************************************
+*
 * Update sprites
 *
 update_sprites:
@@ -414,7 +440,7 @@ update_sprites_2:
        mov  @x,r7
        andi r7,>fffc
        neg  r7
-       li   r2,1+n_tile_sprites
+       li   r2,1+n_tile_sprites+n_enemy_sprites
        li   r3,sprite_list
 update_sprites_3:
        mov  *r3,r1
@@ -459,7 +485,7 @@ update_sprites_5:
        jlt  update_sprites_6
        jmp  update_sprites_7
 update_sprites_6:
-       bl   @spawn_tile_sprite
+       bl   @spawn_sprite
 update_sprites_7:
        ai   r3,sprite_size
        dec  r2
@@ -686,31 +712,52 @@ update_goto_position:
 *
 alloc_tile_sprite:
        li   r2,n_tile_sprites
-       li   r3,sprite_tile_list
-alloc_tile_sprite_1:
+       li   r3,tile_sprite_list
+       jmp  alloc_sprite_1
+alloc_enemy_sprite:
+       li   r2,n_enemy_sprites
+       li   r3,enemy_sprite_list
+alloc_sprite_1:
        mov  *r3,r1
-       jne  alloc_tile_sprite_2
+       jne  alloc_sprite_2
        mov  r0,*r3
-       jmp  alloc_tile_sprite_3
-alloc_tile_sprite_2:
+       jmp  alloc_sprite_3
+alloc_sprite_2:
        ai   r3,sprite_size
        dec  r2
-       jne  alloc_tile_sprite_1
+       jne  alloc_sprite_1
        clr  r3
 *      Return
-alloc_tile_sprite_3:
+alloc_sprite_3:
        b    *r11
 *// alloc_tile_sprite
 
 *********************************************************************************
 *
-* Respawn tile sprite
+* Respawn enemy sprite
 *
 * r3: address of tile sprite
 *
-spawn_tile_sprite:
+spawn_enemy_sprite:
        mov  r11,*r10+                  ; Push return address onto the stack
-spawn_tile_sprite_1:
+       bl   @rand
+       sra  r0,12
+       mov  r0,@sprite_vx(r3)
+       bl   @rand
+       sra  r0,12
+       mov  r0,@sprite_vy(r3)
+       jmp  spawn_sprite_1
+*// spawn_enemy_sprite
+
+*********************************************************************************
+*
+* Respawn sprite
+*
+* r3: address of tile sprite
+*
+spawn_sprite:
+       mov  r11,*r10+                  ; Push return address onto the stack
+spawn_sprite_1:
 *      x
        bl   @rand
        andi r0,>000f
@@ -731,7 +778,7 @@ spawn_tile_sprite_1:
        mpy  r0,r0
        a    r1,r14
        ci   r14,9                      ; dist^2 < 9 <=> dist < 3
-       jlt  spawn_tile_sprite_1        ; Try again if too close
+       jlt  spawn_sprite_1        ; Try again if too close
 *      Update position
        sla  r4,8
        a    @x,r4
@@ -747,7 +794,7 @@ spawn_tile_sprite_1:
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
        b    *r11
-*// spawn_tile_sprite
+*// spawn_sprite
 
 *********************************************************************************
 *
@@ -769,14 +816,22 @@ init_game:
        clr  @score
        bl   @update_goto_position
        li   r8,n_tile_sprites
-       li   r3,sprite_tile_list
+       li   r3,tile_sprite_list
 init_game_1:
        li   r0,>c405
        mov  r0,*r3
-       bl   @spawn_tile_sprite
+       bl   @spawn_sprite
        ai   r3,sprite_size
        dec  r8
        jne  init_game_1
+       li   r8,n_enemy_sprites
+init_game_2:
+       li   r0,>a00d
+       mov  r0,*r3
+       bl   @spawn_enemy_sprite
+       ai   r3,sprite_size
+       dec  r8
+       jne  init_game_2
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
@@ -1048,8 +1103,12 @@ map_rows:
        equ  text_line_1
 sprite_list:
        equ  map_rows+512
-sprite_tile_list:
+tile_sprite_list:
        equ  sprite_list+sprite_size
+enemy_sprite_list:
+       equ  sprite_size*n_tile_sprites+tile_sprite_list
+sprite_list_end:
+       equ  sprite_size*n_enemy_sprites+enemy_sprite_list
 
 *********************************************************************
 
