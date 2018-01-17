@@ -389,9 +389,14 @@ move_6:
 * Move enemy sprites
 *
 move_enemies:
+       mov  @frame_no,r1
+       andi r1,>001c
+       swpb r1
+       ori  r1,>800d
        li   r2,n_enemy_sprites
        li   r3,enemy_sprite_list
 move_enemies_1:
+       mov  r1,*r3
        a    @sprite_vx(r3),@sprite_x(r3)
        a    @sprite_vy(r3),@sprite_y(r3)
 move_enemies_2:
@@ -826,7 +831,7 @@ init_game_1:
        jne  init_game_1
        li   r8,n_enemy_sprites
 init_game_2:
-       li   r0,>a00d
+       li   r0,>800d
        mov  r0,*r3
        bl   @spawn_enemy_sprite
        ai   r3,sprite_size
