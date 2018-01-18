@@ -141,7 +141,7 @@ level:
 score:
        equ  level+2
 time_left:
-       equ  score
+       equ  score+2
 buffer:
        equ  time_left+2                ; 32 bytes buffer
 copy_loop:
@@ -247,35 +247,43 @@ set_vdp_tables:
 check_collisions:
        mov  r11,*r10+                  ; Push return address onto the stack
        mov  @coinc,r0
-       jeq  check_collisions_4
+       jeq  check_collisions_5
        li   r3,sprite_list
        li   r2,1+n_tile_sprites
 check_collisions_1:
        mov  *r3,r0
-       jeq  check_collisions_3
+       jeq  check_collisions_4
        mov  @x,r0
        s    @sprite_x(r3),r0
        abs  r0
        ci   r0,>0040
-       jgt  check_collisions_3
+       jgt  check_collisions_4
        mov  @y,r0
        s    @sprite_y(r3),r0
        abs  r0
        ci   r0,>0040
-       jgt  check_collisions_3
+       jgt  check_collisions_4
 *      Collision
-       ci   r3,sprite_list
-       jne  check_collisions_2
+       ci   r3,tile_sprite_list
+       jhe  check_collisions_2
        bl   @update_goto_position
-       jmp  check_collisions_4
+       jmp  check_collisions_5
 check_collisions_2:
+       ci   r3,enemy_sprite_list
+       jhe  check_collisions_3
        bl   @spawn_sprite
+       inc  @score
+       bl   @display_score
+       jmp  check_collisions_5
 check_collisions_3:
+       bl   @spawn_enemy_sprite
+       jmp  check_collisions_5
+check_collisions_4:
        ai   r3,sprite_size
        dec  r2
        jne  check_collisions_1
 *      Return
-check_collisions_4:
+check_collisions_5:
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
        b    *r11
@@ -449,7 +457,7 @@ update_sprites_2:
        li   r3,sprite_list
 update_sprites_3:
        mov  *r3,r1
-       jeq  update_sprites_7
+       jeq  update_sprites_8
        mov  r6,r4
        a    @sprite_y(r3),r4
        sra  r4,2
@@ -476,10 +484,10 @@ update_sprites_4:
        movb @r5lb,*r13
        movb r1,*r13
        movb @r1lb,*r13
-       jmp  update_sprites_7
+       jmp  update_sprites_8
 update_sprites_5:
        ci   r3,sprite_list
-       jeq  update_sprites_7
+       jeq  update_sprites_8
        ci   r4,2*192
        jgt  update_sprites_6
        ci   r4,-1*192
@@ -488,10 +496,15 @@ update_sprites_5:
        jgt  update_sprites_6
        ci   r5,-1*256
        jlt  update_sprites_6
-       jmp  update_sprites_7
+       jmp  update_sprites_8
 update_sprites_6:
+       ci   r3,enemy_sprite_list
+       jhe  update_sprites_7
        bl   @spawn_sprite
+       jmp  update_sprites_8
 update_sprites_7:
+       bl   @spawn_enemy_sprite
+update_sprites_8:
        ai   r3,sprite_size
        dec  r2
        jne  update_sprites_3
@@ -708,6 +721,28 @@ update_goto_position:
 
 *********************************************************************************
 *
+* Display score
+*
+display_score:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       li   r0,23*32+15+nametb
+       bl   @vwad
+       mov  @score,r1
+       li   r2,5
+       bl   @display_decimal
+       li   r0,23*32+15+namet1
+       bl   @vwad
+       mov  @score,r1
+       li   r2,5
+       bl   @display_decimal
+*      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// display_score
+
+*********************************************************************************
+*
 * Allocate tile sprite
 *
 * r0: pattern and color
@@ -746,7 +781,7 @@ alloc_sprite_3:
 spawn_enemy_sprite:
        mov  r11,*r10+                  ; Push return address onto the stack
        bl   @rand
-       sra  r0,12
+       sra  r0,13
        mov  r0,@sprite_vx(r3)
        bl   @rand
        sra  r0,12
@@ -819,6 +854,7 @@ init_game:
        clr  @lives
        clr  @level
        clr  @score
+       bl   @display_score
        bl   @update_goto_position
        li   r8,n_tile_sprites
        li   r3,tile_sprite_list
@@ -862,7 +898,7 @@ display_byte_2:
        movb @minus,*r13
        neg  r1
 display_byte_3:
-       li   r2,2
+       li   r2,3
        jmp  display_decimal
 plus:
        byte chr_plus
@@ -879,7 +915,7 @@ space:
 *
 display_unsigned_byte:
        sra  r1,8
-       li   r2,2
+       li   r2,3
        jmp  display_decimal
 *// display_unsigned_byte
 
@@ -892,10 +928,11 @@ display_unsigned_byte:
 * r2: number of digits
 *
 display_decimal:
-       li   r3,4
+       li   r3,5
        s    r2,r3
        sla  r3,1
        ai   r3,divisors
+       dec  r2
 display_decimal_1:
        clr  r0
        div  *r3+,r0
