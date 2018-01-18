@@ -264,6 +264,8 @@ init_gfx_2:
        movb *r1+,*r13
        dec  r2
        jne  init_gfx_2
+       li   r5,>1000
+       ab   r5,@mask_init+1
        dec  r3
        jne  init_gfx_1
        li   r2,5

@@ -199,14 +199,14 @@ main_loop:
 * Wait for vertical retrace (CRU)
 *
 vsync:
-       movb @vdpsta,r12
+       movb @vdpsta,r1                 ; Clear interrupt if already set
        clr  r12
 vsync_1:
        tb   2                          ; Test CRU bit for VDP interrupt
        jeq  vsync_1
-       movb @vdpsta,r12
-       andi r12,>8000
-       mov  r12,@coinc
+       socb @vdpsta,r1
+       andi r1,>2000
+       mov  r1,@coinc                  ; Store collision bit
        b    *r11
 *// vsync
 
@@ -249,7 +249,7 @@ check_collisions:
        mov  @coinc,r0
        jeq  check_collisions_5
        li   r3,sprite_list
-       li   r2,1+n_tile_sprites
+       li   r2,1+n_tile_sprites+n_enemy_sprites
 check_collisions_1:
        mov  *r3,r0
        jeq  check_collisions_4
@@ -267,12 +267,14 @@ check_collisions_1:
        ci   r3,tile_sprite_list
        jhe  check_collisions_2
        bl   @update_goto_position
+       a    @d100,@score
+       bl   @display_score
        jmp  check_collisions_5
 check_collisions_2:
        ci   r3,enemy_sprite_list
        jhe  check_collisions_3
        bl   @spawn_sprite
-       inc  @score
+       a    @d10,@score
        bl   @display_score
        jmp  check_collisions_5
 check_collisions_3:
@@ -818,17 +820,31 @@ spawn_sprite_1:
        mpy  r0,r0
        a    r1,r14
        ci   r14,9                      ; dist^2 < 9 <=> dist < 3
-       jlt  spawn_sprite_1        ; Try again if too close
-*      Update position
+       jlt  spawn_sprite_1             ; Try again if too close
+*      Finalize
        sla  r4,8
        a    @x,r4
        andi r4,>ff00                   ; Round to meta tiles
        ori  r4,>0060                   ; Center on meta tile
-       mov  r4,@sprite_x(r3)
        sla  r5,8
        a    @y,r5
        andi r5,>ff00                   ; Round to meta tiles
        ori  r5,>0060                   ; Center on meta tile
+*      Check for other sprite at same position
+       li   r1,sprite_list
+       li   r0,1+n_tile_sprites+n_enemy_sprites
+spawn_sprite_2:
+       c    r4,@sprite_x(r1)
+       jne  spawn_sprite_3
+       c    r5,@sprite_y(r1)
+       jne  spawn_sprite_3
+       jmp  spawn_sprite_1             ; Same position - try again
+spawn_sprite_3:
+       ai   r1,sprite_size
+       dec  r0
+       jne  spawn_sprite_2
+*      Update position
+       mov  r4,@sprite_x(r3)
        mov  r5,@sprite_y(r3)
 *      Return
        dect r10                        ; Pop return address off the stack
@@ -931,7 +947,7 @@ display_decimal:
        li   r3,5
        s    r2,r3
        sla  r3,1
-       ai   r3,divisors
+       ai   r3,d10000
        dec  r2
 display_decimal_1:
        clr  r0
@@ -943,8 +959,14 @@ display_decimal_1:
        ai   r1,chr_zero
        movb @r1lb,*r13
        b    *r11
-divisors:
-       data 10000,1000,100,10
+d10000:
+       data 10000
+d1000:
+       data 1000
+d100:
+       data 100
+d10:
+       data 10
 *// display_decimal
 
 *********************************************************************************
