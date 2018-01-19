@@ -158,12 +158,18 @@ sprite_x:                              ; smmmmmmmtttpppff
        equ  2
 sprite_y:                              ; smmmmmmmtttpppff
        equ  4
-sprite_vx:                             ; smmmmmmmtttpppff
+sprite_vx:                             ; ppppppppssssssss
        equ  6
-sprite_vy:                             ; smmmmmmmtttpppff
+sprite_vy:                             ; ppppppppssssssss
        equ  8
-sprite_size:
+sprite_ax:                             ; ppppppppssssssss
        equ  10
+sprite_ay:                             ; ppppppppssssssss
+       equ  12
+sprite_count:
+       equ  14
+sprite_size:
+       equ  16
 
 ********************************************************************************
 *
@@ -184,7 +190,7 @@ main_loop:
        bl   @check_collisions
        bl   @user_input
        bl   @move
-       bl   @move_enemies
+       bl   @move_other_sprites
        bl   @update_sprites
        bl   @calculate_nt_address
        bl   @update_name_table
@@ -273,7 +279,7 @@ check_collisions_1:
 check_collisions_2:
        ci   r3,enemy_sprite_list
        jhe  check_collisions_3
-       bl   @spawn_sprite
+       bl   @spawn_tile_sprite
        a    @d10,@score
        bl   @display_score
        jmp  check_collisions_5
@@ -312,25 +318,25 @@ user_input:
 *      Up
        sla  r0,4
        jnc  user_input_1
-       li   r1,->0020
+       li   r1,->0040
        mov  r1,@ay
 user_input_1:
 *      Down
        sla  r0,1
        jnc  user_input_2
-       li   r1,>0020
+       li   r1,>0040
        mov  r1,@ay
 user_input_2:
 *      Right
        sla  r0,1
        jnc  user_input_3
-       li   r1,>0020
+       li   r1,>0040
        mov  r1,@ax
 user_input_3:
 *      Left
        sla  r0,1
        jnc  user_input_4
-       li   r1,->0020
+       li   r1,->0040
        mov  r1,@ax
 user_input_4:
 *      Fire
@@ -396,26 +402,29 @@ move_6:
 
 *********************************************************************************
 *
-* Move enemy sprites
+* Move other sprites
 *
-move_enemies:
-       mov  @frame_no,r1
-       andi r1,>001c
-       swpb r1
-       ori  r1,>800d
-       li   r2,n_enemy_sprites
-       li   r3,enemy_sprite_list
-move_enemies_1:
-       mov  r1,*r3
-       a    @sprite_vx(r3),@sprite_x(r3)
-       a    @sprite_vy(r3),@sprite_y(r3)
-move_enemies_2:
+move_other_sprites:
+       li   r2,n_tile_sprites+n_enemy_sprites
+       li   r3,tile_sprite_list
+move_other_sprites_1:
+       mov  *r3,r0
+       jeq  move_other_sprites_2
+       a    @sprite_ax(r3),@sprite_vx(r3)
+       a    @sprite_ay(r3),@sprite_vy(r3)
+       mov  @sprite_vx(r3),r0
+       sra  r0,6
+       a    r0,@sprite_x(r3)
+       mov  @sprite_vy(r3),r0
+       sra  r0,6
+       a    r0,@sprite_y(r3)
+move_other_sprites_2:
        ai   r3,sprite_size
        dec  r2
-       jne  move_enemies_1
+       jne  move_other_sprites_1
 *      Return
        b    *r11
-*// move_enemies
+*// move_other_sprites
 
 *********************************************************************************
 *
@@ -448,18 +457,27 @@ update_sprites_2:
        ai   r0,16+2
        bl   @vsbw
        movb @player_init+3,*r13
-*      Tile sprites
+*      Tile and enemy sprites
        mov  @y,r6
        andi r6,>fffc
        neg  r6
        mov  @x,r7
        andi r7,>fffc
        neg  r7
+*      Enemy pattern
+       mov  @frame_no,r8
+       andi r8,>001c
+       swpb r8
+*      Loop
        li   r2,1+n_tile_sprites+n_enemy_sprites
        li   r3,sprite_list
 update_sprites_3:
        mov  *r3,r1
        jeq  update_sprites_8
+       ci   r3,n_enemy_sprites
+       jl   update_sprites_9
+       a    r8,r0
+update_sprites_9:
        mov  r6,r4
        a    @sprite_y(r3),r4
        sra  r4,2
@@ -502,7 +520,7 @@ update_sprites_5:
 update_sprites_6:
        ci   r3,enemy_sprite_list
        jhe  update_sprites_7
-       bl   @spawn_sprite
+       bl   @spawn_tile_sprite
        jmp  update_sprites_8
 update_sprites_7:
        bl   @spawn_enemy_sprite
@@ -776,24 +794,45 @@ alloc_sprite_3:
 
 *********************************************************************************
 *
-* Respawn enemy sprite
+* Spawn enemy sprite
 *
-* r3: address of tile sprite
+* r3: address of enemy sprite
 *
 spawn_enemy_sprite:
        mov  r11,*r10+                  ; Push return address onto the stack
        bl   @rand
-       sra  r0,13
+       sra  r0,6
        mov  r0,@sprite_vx(r3)
        bl   @rand
-       sra  r0,12
+       sra  r0,6
        mov  r0,@sprite_vy(r3)
+       bl   @rand
+       sra  r0,12
+       mov  r0,@sprite_ax(r3)
+       bl   @rand
+       sra  r0,12
+       mov  r0,@sprite_ay(r3)
        jmp  spawn_sprite_1
 *// spawn_enemy_sprite
 
 *********************************************************************************
 *
-* Respawn sprite
+* Spawn tile sprite
+*
+* r3: address of tile sprite
+*
+spawn_tile_sprite:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       clr  @sprite_vx(r3)
+       clr  @sprite_vy(r3)
+       clr  @sprite_ax(r3)
+       clr  @sprite_ay(r3)
+       jmp  spawn_sprite_1
+*// spawn_tile_sprite
+
+*********************************************************************************
+*
+* Spawn sprite
 *
 * r3: address of tile sprite
 *
@@ -877,7 +916,7 @@ init_game:
 init_game_1:
        li   r0,>c405
        mov  r0,*r3
-       bl   @spawn_sprite
+       bl   @spawn_tile_sprite
        ai   r3,sprite_size
        dec  r8
        jne  init_game_1
