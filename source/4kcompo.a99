@@ -474,9 +474,9 @@ update_sprites_2:
 update_sprites_3:
        mov  *r3,r1
        jeq  update_sprites_8
-       ci   r3,n_enemy_sprites
+       ci   r3,enemy_sprite_list
        jl   update_sprites_9
-       a    r8,r0
+       a    r8,r1
 update_sprites_9:
        mov  r6,r4
        a    @sprite_y(r3),r4
@@ -801,10 +801,10 @@ alloc_sprite_3:
 spawn_enemy_sprite:
        mov  r11,*r10+                  ; Push return address onto the stack
        bl   @rand
-       sra  r0,6
+       sra  r0,7
        mov  r0,@sprite_vx(r3)
        bl   @rand
-       sra  r0,6
+       sra  r0,7
        mov  r0,@sprite_vy(r3)
        bl   @rand
        sra  r0,12
