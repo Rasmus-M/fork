@@ -257,7 +257,7 @@ check_collisions:
        mov  @coinc,r0
        jeq  check_collisions_5
        li   r3,sprite_list
-       li   r2,1+n_tile_sprites+n_enemy_sprites
+       li   r2,1+n_sprites
 check_collisions_1:
        mov  *r3,r0
        jeq  check_collisions_4
@@ -427,7 +427,7 @@ move_6:
 *
 move_other_sprites:
        mov  r11,*r10+                  ; Push return address onto the stack
-       li   r2,n_tile_sprites+n_enemy_sprites
+       li   r2,n_sprites
        li   r3,tile_sprite_list
 move_other_sprites_1:
        mov  *r3,r0
@@ -501,7 +501,7 @@ update_sprites_2:
        andi r8,>001c
        swpb r8
 *      Loop
-       li   r2,1+n_tile_sprites+n_enemy_sprites
+       li   r2,1+n_sprites
        li   r3,sprite_list
 update_sprites_3:
        mov  *r3,r1
@@ -906,7 +906,7 @@ spawn_sprite_1:
        ori  r5,>0060                   ; Center on meta tile
 *      Check for other sprite at same position
        li   r1,sprite_list
-       li   r0,1+n_tile_sprites+n_enemy_sprites
+       li   r0,1+n_sprites
 spawn_sprite_2:
        c    r4,@sprite_x(r1)
        jne  spawn_sprite_3
