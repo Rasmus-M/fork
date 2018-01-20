@@ -106,12 +106,12 @@ padvar equ  stack+>20                  ; Start of pad variables
 *
 one:
        equ  padvar
-frame_no:
-       equ  one+2
 rand_no:
-       equ  frame_no+2
-coinc:
+       equ  one+2
+frame_no:
        equ  rand_no+2
+coinc:
+       equ  frame_no+2
 double_buffer_flag:
        equ  coinc+2
 double_buffer_address:
@@ -152,6 +152,10 @@ copy_loop:
        equ  buffer+32
 pad_max:
        equ  copy_loop+24
+pad_init_start:
+       equ  frame_no
+pad_init_end:
+       equ  time_left
 
 * Sprite structure
 sprite_pattern:                        ; If 0 then not allocated
@@ -186,10 +190,21 @@ main:
        li   r10,stack                  ; Setup stack pointer
        mov  @rndsd,@rand_no            ; Save random number seed
        li   r13,vdpwd                  ; Do not change
+       li   r15,main_return
        seto @one
        bl   @init
        bl   @init_game
 main_loop:
+       bl   @main_actions
+       inc  @frame_no
+       jmp  main_loop
+
+*********************************************************************
+*
+* Wait for vertical retrace (CRU)
+*
+main_actions:
+       mov  r11,*r10+                  ; Push return address onto the stack
        bl   @vsync
        bl   @set_vdp_tables
        bl   @check_collisions
@@ -201,9 +216,11 @@ main_loop:
        bl   @update_name_table
        bl   @display_position
        bl   @display_time_left
-       inc  @frame_no
-       jmp  main_loop
-*// main
+main_return:
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
+       b    *r11
+*// main_actions
 
 *********************************************************************
 *
@@ -246,9 +263,7 @@ set_vdp_tables:
 *      Flip double buffer flag
        inv  @double_buffer_flag
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// set_vdp_tables
 
 *********************************************************************************
@@ -315,9 +330,7 @@ check_collisions_4:
        jne  check_collisions_1
 *      Return
 check_collisions_5:
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// check_collisions
 
 *********************************************************************************
@@ -479,9 +492,7 @@ move_other_sprites_4:
        dec  r2
        jne  move_other_sprites_1
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// move_other_sprites
 
 *********************************************************************************
@@ -563,9 +574,7 @@ upload_sprites_5:
        li   r1,>d000
        movb r1,*r13
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 dir_sprite_table:
        byte >80                        ; 0 None
        byte >90                        ; 1 Left
@@ -677,9 +686,7 @@ display_time_left:
        bl   @display_unsigned_byte
 *      Return
 display_time_left_1:
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// display_time_left
 
 *********************************************************************************
@@ -699,9 +706,7 @@ display_position:
        mov  @player_y,r1
        bl   @display_byte
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// display_position
 
 *********************************************************************************
@@ -721,9 +726,7 @@ display_target_position:
        mov  @target_y,r1
        bl   @display_byte
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// display_target_position
 
 *********************************************************************************
@@ -766,9 +769,7 @@ update_target_position:
        li   r2,16
        bl   @vsmw
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// update_target_position
 
 *********************************************************************************
@@ -788,41 +789,39 @@ display_score:
        li   r2,5
        bl   @display_decimal
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// display_score
 
-*********************************************************************************
-*
-* Allocate tile sprite
-*
-* r0: pattern and color
-*
-* On return r3 contain the address of the allocated sprite
-* or 0 if allocation failed.
-*
-alloc_tile_sprite:
-       li   r2,n_tile_sprites
-       li   r3,tile_sprite_list
-       jmp  alloc_sprite_1
-alloc_enemy_sprite:
-       li   r2,n_enemy_sprites
-       li   r3,enemy_sprite_list
-alloc_sprite_1:
-       mov  *r3,r1
-       jne  alloc_sprite_2
-       mov  r0,*r3
-       jmp  alloc_sprite_3
-alloc_sprite_2:
-       ai   r3,sprite_size
-       dec  r2
-       jne  alloc_sprite_1
-       clr  r3
-*      Return
-alloc_sprite_3:
-       b    *r11
-*// alloc_tile_sprite
+;*********************************************************************************
+;*
+;* Allocate tile sprite
+;*
+;* r0: pattern and color
+;*
+;* On return r3 contain the address of the allocated sprite
+;* or 0 if allocation failed.
+;*
+;alloc_tile_sprite:
+;       li   r2,n_tile_sprites
+;       li   r3,tile_sprite_list
+;       jmp  alloc_sprite_1
+;alloc_enemy_sprite:
+;       li   r2,n_enemy_sprites
+;       li   r3,enemy_sprite_list
+;alloc_sprite_1:
+;       mov  *r3,r1
+;       jne  alloc_sprite_2
+;       mov  r0,*r3
+;       jmp  alloc_sprite_3
+;alloc_sprite_2:
+;       ai   r3,sprite_size
+;       dec  r2
+;       jne  alloc_sprite_1
+;       clr  r3
+;*      Return
+;alloc_sprite_3:
+;       b    *r11
+;*// alloc_tile_sprite
 
 *********************************************************************************
 *
@@ -919,9 +918,7 @@ spawn_sprite_3:
        mov  r5,@sprite_y(r3)
        clr  @sprite_count(r3)
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// spawn_sprite
 
 *********************************************************************************
@@ -930,21 +927,16 @@ spawn_sprite_3:
 *
 init_game:
        mov  r11,*r10+                  ; Push return address onto the stack
-       li   r0,start_x
-       mov  r0,@player_x
-       li   r0,start_y
-       mov  r0,@player_y
-       clr  @player_vx
-       clr  @player_vy
-       clr  @double_buffer_flag
-       clr  @frame_no
-       li   r0,>8008
-       mov  r0,@player_pattern
-       clr  @lives
-       clr  @level
-       clr  @score
-       bl   @display_score
-       bl   @update_target_position
+       li   r0,pad_init_start
+       clr  *r0
+       li   r1,pad_init_start+2
+       li   r2,pad_init_end-pad_init_start
+       bl   @copy_memory
+       li   r0,init_player_data
+       mov  *r0+,@player_pattern
+       mov  *r0+,@player_x
+       mov  *r0+,@player_y
+*      Init sprites
        li   r8,n_tile_sprites
        li   r3,tile_sprite_list
 init_game_1:
@@ -962,11 +954,33 @@ init_game_2:
        ai   r3,sprite_size
        dec  r8
        jne  init_game_2
+*      Init display
+       bl   @display_score
+       bl   @update_target_position
+       bl   @main_actions
+*      Disable blanking
+       li   r0,>01e2
+       bl   @vwtr
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
+init_player_data:
+       data >8008,start_x,start_y
 *// init_game
+
+*********************************************************************
+*
+* Copy memory
+*
+* r0: Source address
+* r1: Destination address
+* r2: Length
+*
+copy_memory:
+       mov  *r0+,*r1+
+       dect r2
+       jne  copy_memory
+       b    *r11
+*// copy_memory
 
 *********************************************************************
 *
@@ -1081,9 +1095,7 @@ display_text_4:
        ai   r2,-buffer
        bl   @vmbw
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// display_text
 
 *********************************************************************

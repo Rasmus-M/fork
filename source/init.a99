@@ -4,12 +4,12 @@
 *
 init:
        mov  r11,*r10+                  ; Push return address onto the stack
+       bl   @f18a_init
+       bl   @gmode
        li   r0,copy_loop_1
        li   r1,copy_loop
        li   r2,copy_loop_2-copy_loop_1
        bl   @copy_memory
-       bl   @f18a_init
-       bl   @gmode
        bl   @init_patterns
        bl   @init_gfx
        li   r0,22*32
@@ -19,12 +19,8 @@ init:
        li   r1,text_line_2
        bl   @display_text
        bl   @init_map                  ; Overwrites graphics
-       li   r0,>01e2                   ; Disable blanking
-       bl   @vwtr
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// init
 
 *********************************************************************************
@@ -76,9 +72,7 @@ init_patterns:
        bl   @hscroll
        bl   @vscroll
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// init_patterns
 
 *********************************************************************************
@@ -136,9 +130,7 @@ hscroll_4:
        ci   r3,h_patterns                      ;
        jlt  hscroll_1
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// hscroll
 
 *********************************************************************************
@@ -214,9 +206,7 @@ vscroll_4:
        ci   r3,v_patterns                      ;
        jlt  vscroll_1
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 from_pattern:
        equ  buffer
 to_pattern:
@@ -229,19 +219,7 @@ to_pattern:
 *
 init_gfx:
        mov  r11,*r10+                  ; Push return address onto the stack
-*      Name tables
-       li   r1,chr_space*256
-       li   r0,nametb
-       li   r2,>300
-       bl   @vsmw
-       li   r0,namet1
-       li   r2,>300
-       bl   @vsmw
 *      Colors
-       li   r0,colrtb
-       li   r1,>1100
-       li   r2,16
-       bl   @vsmw
        li   r0,colrtb+16
        li   r1,>8100
        li   r2,16
@@ -254,32 +232,58 @@ init_gfx:
 *      Sprite attributes
        li   r0,spratb
        li   r3,2
-init_gfx_0:
+init_gfx_1:
        bl   @vwad
        li   r2,4
 *      Masks
-init_gfx_1:
-       li   r1,>af00
 init_gfx_2:
+       li   r1,>af00
+init_gfx_3:
        movb r1,*r13
        movb @r1lb,*r13
        clr  *r13
        clr  *r13
        ai   r1,>0010
        dec  r2
-       jne  init_gfx_1
+       jne  init_gfx_2
 *      Player
-       li   r1,center_y * 256 + center_x
+       li   r1,center_y*256+center_x
        movb r1,*r13
        movb @r1lb,*r13
 *      Next table
        ai   r0,>100
        dec  r3
-       jne  init_gfx_0
+       jne  init_gfx_1
+*      Read character set from GROM
+       li   r0,ptrntb+>700
+       li   r3,8
+init_gfx_4:
+       bl   @vwad
+       li   r4,charset
+       li   r5,32
+init_gfx_5:
+       clr  r1
+       movb *r4+,@r1lb
+       ai   r1,-32
+       mov  r1,r6
+       sla  r1,3
+       s    r6,r1
+       ai   r1,1716
+       movb r1,@grmwa
+       movb @r1lb,@grmwa
+       clr  *r13                       ; Top line
+       li   r2,7
+init_gfx_6:
+       movb @grmrd,*r13
+       dec  r2
+       jne  init_gfx_6
+       dec  r5
+       jne  init_gfx_5
+       ai   r0,>800
+       dec  r3
+       jne  init_gfx_4
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// init_gfx
 
 *********************************************************************************
@@ -302,42 +306,12 @@ gmode_1:
        clr  r1
        li   r2,>4000
        bl   @vsmw
-*      Read character set from GROM
-       li   r0,ptrntb+>700
-       li   r3,8
-gmode_2:
-       bl   @vwad
-       li   r4,charset
-       li   r5,32
-gmode_3:
-       clr  r1
-       movb *r4+,@r1lb
-       ai   r1,-32
-       mov  r1,r6
-       sla  r1,3
-       s    r6,r1
-       ai   r1,1716
-       movb r1,@grmwa
-       movb @r1lb,@grmwa
-       clr  *r13                       ; Top line
-       li   r2,7
-gmode_4:
-       movb @grmrd,*r13
-       dec  r2
-       jne  gmode_4
-       dec  r5
-       jne  gmode_3
-       ai   r0,>800
-       dec  r3
-       jne  gmode_2
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *      VDP registers
 vregs:
        byte >00                        ; Graphics II mode
-       byte >a2                        ; 16K, display on, interrupt enabled
+       byte >a2                        ; 16K, display off, interrupt enabled, 16x16 sprites
        byte nametb/>400                ; Name table
        byte colrtb/>40                 ; Color table
        byte ptrntb/>800                ; Pattern table
@@ -379,22 +353,5 @@ f18a_init_1:
        li   r0, >01e2                   ; Set Reg 1 to a sane value
        bl   @vwtr                      ; Write
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10, r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// f18a_init
-
-*********************************************************************
-*
-* Copy memory
-*
-* r0: Source address
-* r1: Destination address
-* r2: Length
-*
-copy_memory:
-       mov  *r0+,*r1+
-       dect r2
-       jne  copy_memory
-       b    *r11
-*// copy_memory
