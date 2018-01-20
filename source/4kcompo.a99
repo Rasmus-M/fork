@@ -948,7 +948,9 @@ init_game_1:
        jne  init_game_1
        li   r8,n_enemy_sprites
 init_game_2:
-       li   r0,>a00d
+       bl   @rand
+       andi r0,>000f
+       ori  r0,>a002
        mov  r0,*r3
        bl   @spawn_enemy_sprite
        ai   r3,sprite_size
