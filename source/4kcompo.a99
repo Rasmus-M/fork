@@ -750,6 +750,9 @@ update_target_position:
        ori  r1,>f000
        li   r2,16
        bl   @vsmw
+*      Display level
+       li   r14,display_level
+       bl   @display_both_name_tables
 *      Return
        b    *r15                       ; Pop return address and return
 *// update_target_position
@@ -1023,8 +1026,6 @@ init_game_2:
 *      Init display
        bl   @update_target_position
        li   r14,display_lives
-       bl   @display_both_name_tables
-       li   r14,display_level
        bl   @display_both_name_tables
        bl   @main_actions
 *      Disable blanking
