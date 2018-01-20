@@ -193,7 +193,7 @@ main_loop:
        bl   @user_input
        bl   @move
        bl   @move_other_sprites
-       bl   @update_sprites
+       bl   @upload_sprites
        bl   @calculate_nt_address
        bl   @update_name_table
        bl   @display_position
@@ -281,7 +281,7 @@ check_collisions_1:
 check_collisions_2:
        ci   r3,enemy_sprite_list
        jhe  check_collisions_3
-;       bl   @spawn_tile_sprite
+*      Bounce with balls
        mov  @sprite_count(r3),r0
        jne  check_collisions_5
        mov  @vx,r0
@@ -431,7 +431,19 @@ move_other_sprites:
        li   r3,tile_sprite_list
 move_other_sprites_1:
        mov  *r3,r0
-       jeq  move_other_sprites_2
+       jeq  move_other_sprites_4
+*      Check for out of bounds
+       mov  @x,r0
+       s  @sprite_x(r3),r0
+       abs  r0
+       ci   r0,>0400
+       jgt  move_other_sprite_2
+       mov  @y,r1
+       s  @sprite_y(r3),r1
+       abs  r1
+       ci   r1,>0400
+       jgt  move_other_sprite_2
+*      Move
        a    @sprite_ax(r3),@sprite_vx(r3)
        a    @sprite_ay(r3),@sprite_vy(r3)
        mov  @sprite_vx(r3),r0
@@ -440,15 +452,26 @@ move_other_sprites_1:
        mov  @sprite_vy(r3),r0
        sra  r0,6
        a    r0,@sprite_y(r3)
+*      Check sprite counter for enemies
        ci   r3,enemy_sprite_list
-       jhe  move_other_sprites_2
-*      Sprite counter
+       jhe  move_other_sprites_4
        mov  @sprite_count(r3),r0
-       jeq  move_other_sprites_2
+       jeq  move_other_sprites_4
        dec  @sprite_count(r3)
-       jgt  move_other_sprites_2
+       jgt  move_other_sprites_4
        bl   @spawn_tile_sprite
-move_other_sprites_2:
+       jmp  move_other_sprites_4
+*      Out of bounds
+move_other_sprite_2:
+       ci   r3,enemy_sprite_list
+       jhe  move_other_sprites_3
+*      Tile sprite out of bounds
+       bl   @spawn_tile_sprite
+       jmp  move_other_sprites_4
+move_other_sprites_3:
+*      Enemy sprite out of bounds
+       bl   @spawn_enemy_sprite
+move_other_sprites_4:
        ai   r3,sprite_size
        dec  r2
        jne  move_other_sprites_1
@@ -460,9 +483,9 @@ move_other_sprites_2:
 
 *********************************************************************************
 *
-* Upload sprites to VDP, remove if out of bounds
+* Upload visible sprites to VDP. Also handles animation.
 *
-update_sprites:
+upload_sprites:
        mov  r11,*r10+                  ; Push return address onto the stack
 *      VDP address
        mov  @double_buffer_flag,r0
@@ -471,18 +494,18 @@ update_sprites:
        sla  r0,7
 *      Player
        mov  @joystick_input,r1
-       jne  update_sprites_1
+       jne  upload_sprites_1
        mov  @player_pattern,r1
-       jmp  update_sprites_2
-update_sprites_1:
+       jmp  upload_sprites_2
+upload_sprites_1:
        srl  r1,1
        movb @dir_sprite_table(r1),r2
        mov  @player_pattern,r1
        cb   r2,r1
-       jeq  update_sprites_2
+       jeq  upload_sprites_2
        ai   r1,->0040
        andi r1,>07ff
-update_sprites_2:
+upload_sprites_2:
        mov  r1,@player_pattern
        sla  r1,2
        ai   r1,>a000
@@ -503,13 +526,13 @@ update_sprites_2:
 *      Loop
        li   r2,1+n_sprites
        li   r3,sprite_list
-update_sprites_3:
+upload_sprites_3:
        mov  *r3,r1
-       jeq  update_sprites_8
+       jeq  upload_sprites_6
        ci   r3,enemy_sprite_list
-       jl   update_sprites_9
+       jl   upload_sprites_4
        a    r8,r1
-update_sprites_9:
+upload_sprites_4:
        mov  r6,r4
        a    @sprite_y(r3),r4
        sra  r4,2
@@ -519,50 +542,27 @@ update_sprites_9:
        sra  r5,2
        ai   r5,center_x
        ci   r4,191
-       jgt  update_sprites_5
+       jgt  upload_sprites_6
        ci   r4,-15
-       jlt  update_sprites_5
+       jlt  upload_sprites_6
        ci   r5,255
-       jgt  update_sprites_5
+       jgt  upload_sprites_6
        ci   r5,-15
-       jlt  update_sprites_5
+       jlt  upload_sprites_6
        ci   r5,0
-       jgt  update_sprites_4
+       jgt  upload_sprites_5
        ai   r5,32
-       ori  r1,>0080
-update_sprites_4:
+       ori  r1,>0080                   ; Set early clock
+upload_sprites_5:
        dec  r4
        movb @r4lb,*r13
        movb @r5lb,*r13
        movb r1,*r13
        movb @r1lb,*r13
-       jmp  update_sprites_8
-*      Sprite of of screen
-update_sprites_5:
-       ci   r3,sprite_list             ; OK for target sprite to be out of screen
-       jeq  update_sprites_8
-       ci   r4,2*192
-       jgt  update_sprites_6
-       ci   r4,-1*192
-       jlt  update_sprites_6
-       ci   r5,2*256
-       jgt  update_sprites_6
-       ci   r5,-1*256
-       jlt  update_sprites_6
-       jmp  update_sprites_8
-update_sprites_6:
-       ci   r3,enemy_sprite_list
-       jhe  update_sprites_7
-*      Tile sprite out of bounds
-       bl   @spawn_tile_sprite
-       jmp  update_sprites_8
-update_sprites_7:
-*      Enemy sprite out of bounds
-       bl   @spawn_enemy_sprite
-update_sprites_8:
+upload_sprites_6:
        ai   r3,sprite_size
        dec  r2
-       jne  update_sprites_3
+       jne  upload_sprites_3
 *      End marker
        movb @player_init+4,*r13
 *      Return
