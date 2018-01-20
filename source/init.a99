@@ -248,8 +248,8 @@ init_gfx:
        bl   @vsmw
 *      Sprite patterns
        li   r0,sprptb+>400
-       li   r1,SPR8
-       li   r2,18*32
+       li   r1,SPR0
+       li   r2,20*32
        bl   @vmbw
 *      Sprite attributes
        li   r0,spratb
