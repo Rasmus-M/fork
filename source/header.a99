@@ -1,0 +1,16 @@
+***************************************************************
+* Cartridge header
+************************************@**************************
+header_start:
+       byte >aa,1,1,>52
+       data 0
+       data program_entry
+       data 0,0,0,0
+program_entry:
+       data 0
+       data main
+       byte 4
+       text 'FORK'
+header_end
+header_length:
+       equ  header_end-header_start
