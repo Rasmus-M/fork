@@ -253,40 +253,33 @@ init_gfx:
        bl   @vmbw
 *      Sprite attributes
        li   r0,spratb
-       li   r4,2
+       li   r3,2
 init_gfx_0:
        bl   @vwad
-       li   r3,4
-init_gfx_1:
-       li   r1,mask_init
        li   r2,4
+*      Masks
+init_gfx_1:
+       li   r1,>af00
 init_gfx_2:
-       movb *r1+,*r13
+       movb r1,*r13
+       movb @r1lb,*r13
+       clr  *r13
+       clr  *r13
+       ai   r1,>0010
        dec  r2
-       jne  init_gfx_2
-       li   r5,>1000
-       ab   r5,@mask_init+1
-       dec  r3
        jne  init_gfx_1
-       li   r2,5
-init_gfx_3:
-       movb *r1+,*r13
-       dec  r2
-       jne  init_gfx_3
+*      Player
+       li   r1,center_y * 256 + center_x
+       movb r1,*r13
+       movb @r1lb,*r13
 *      Next table
        ai   r0,>100
-       dec  r4
+       dec  r3
        jne  init_gfx_0
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
        b    *r11
-mask_init:
-       byte >af,>00,>00,>00
-player_init:
-       byte center_y,center_x,>a0,>08
-end_marker:
-       byte >d0,>00
 *// init_gfx
 
 *********************************************************************************

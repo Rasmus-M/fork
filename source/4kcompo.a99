@@ -104,8 +104,10 @@ padvar equ  stack+>20                  ; Start of pad variables
 *
 * PAD variables
 *
-frame_no:
+one:
        equ  padvar
+frame_no:
+       equ  one+2
 rand_no:
        equ  frame_no+2
 coinc:
@@ -120,20 +122,20 @@ fire:
        equ  joystick_input+2
 player_pattern:
        equ  fire+2
-x:                                     ; smmmmmmmtttpppff s=sign, m=metatile, t=tile, p=pixel, f=fraction
+player_x:                              ; smmmmmmmtttpppff s=sign, m=metatile, t=tile, p=pixel, f=fraction
        equ  player_pattern+2
-y:                                     ; smmmmmmmtttpppff
-       equ  x+2
-vx:                                    ; ppppppppssssssss
-       equ  y+2
-vy:                                    ; ppppppppssssssss
-       equ  vx+2
-ax:                                    ; ppppppppssssssss
-       equ  vy+2
-ay:                                    ; ppppppppssssssss
-       equ  ax+2
+player_y:                              ; smmmmmmmtttpppff
+       equ  player_x+2
+player_vx:                             ; ppppppppssssssss
+       equ  player_y+2
+player_vy:                             ; ppppppppssssssss
+       equ  player_vx+2
+player_ax:                             ; ppppppppssssssss
+       equ  player_vy+2
+player_ay:                             ; ppppppppssssssss
+       equ  player_ax+2
 target_x:
-       equ  ay+2
+       equ  player_ay+2
 target_y:
        equ  target_x+2
 lives:
@@ -184,6 +186,7 @@ main:
        li   r10,stack                  ; Setup stack pointer
        mov  @rndsd,@rand_no            ; Save random number seed
        li   r13,vdpwd                  ; Do not change
+       seto @one
        bl   @init
        bl   @init_game
 main_loop:
@@ -225,7 +228,7 @@ vsync_1:
 set_vdp_tables:
        mov  r11,*r10+                  ; Push return address onto the stack
 *      Set pattern table according to horizontal scroll offset
-       mov  @x,r0
+       mov  @player_x,r0
        sra  r0,2                       ; Shift out sub-pixels
        andi r0,>0007                   ; Isolate pixels
        ori  r0,>0400
@@ -261,12 +264,12 @@ check_collisions:
 check_collisions_1:
        mov  *r3,r0
        jeq  check_collisions_4
-       mov  @x,r0
+       mov  @player_x,r0
        s    @sprite_x(r3),r0
        abs  r0
        ci   r0,>0040
        jgt  check_collisions_4
-       mov  @y,r0
+       mov  @player_y,r0
        s    @sprite_y(r3),r0
        abs  r0
        ci   r0,>0040
@@ -284,20 +287,20 @@ check_collisions_2:
 *      Bounce with balls
        mov  @sprite_count(r3),r0
        jne  check_collisions_5
-       mov  @vx,r0
+       mov  @player_vx,r0
        mov  r0,@sprite_vx(r3)
        neg  r0
        sra  r0,5
        mov  r0,@sprite_ax(r3)
-       mov  @vy,r0
+       mov  @player_vy,r0
        mov  r0,@sprite_vy(r3)
        neg  r0
        sra  r0,5
        mov  r0,@sprite_ay(r3)
-       neg  @vx
-       neg  @vy
-       neg  @ax
-       neg  @ay
+       neg  @player_vx
+       neg  @player_vy
+       neg  @player_ax
+       neg  @player_ay
        li   r0,32
        mov  r0,@sprite_count(r3)
        a    @d10,@score
@@ -322,8 +325,8 @@ check_collisions_5:
 * User input
 *
 user_input:
-       clr  @ax
-       clr  @ay
+       clr  @player_ax
+       clr  @player_ay
        clr  @fire
 *      Read joystick #1 using CRU
        li   r12,>0024                  ; CRU address of the column decoder
@@ -340,25 +343,25 @@ user_input:
        sla  r0,4
        jnc  user_input_1
        li   r1,->0020
-       mov  r1,@ay
+       mov  r1,@player_ay
 user_input_1:
 *      Down
        sla  r0,1
        jnc  user_input_2
        li   r1,>0020
-       mov  r1,@ay
+       mov  r1,@player_ay
 user_input_2:
 *      Right
        sla  r0,1
        jnc  user_input_3
        li   r1,>0020
-       mov  r1,@ax
+       mov  r1,@player_ax
 user_input_3:
 *      Left
        sla  r0,1
        jnc  user_input_4
        li   r1,->0020
-       mov  r1,@ax
+       mov  r1,@player_ax
 user_input_4:
 *      Fire
        sla  r0,1
@@ -374,8 +377,8 @@ user_input_5:
 *
 move:
 *      X
-       mov  @vx,r0                     ; Velocity
-       mov  @ax,r1
+       mov  @player_vx,r0                     ; Velocity
+       mov  @player_ax,r1
        jeq  move_1
 *      Accelerate
        a    r1,r0
@@ -392,12 +395,12 @@ move_2:
        sra  r1,6                       ; Divide velocity by 64
        s    r1,r0                      ; Subtract from velocity
 move_3:
-       mov  r0,@vx                     ; Save velocity
+       mov  r0,@player_vx                     ; Save velocity
        sra  r0,6                       ; Shift to LSB
-       a    r0,@x                      ; Add to position
+       a    r0,@player_x                      ; Add to position
 *      Y
-       mov  @vy,r0                     ; Velocity
-       mov  @ay,r1
+       mov  @player_vy,r0                     ; Velocity
+       mov  @player_ay,r1
        jeq  move_4
 *      Accelerate
        a    r1,r0
@@ -414,9 +417,9 @@ move_5:
        sra  r1,6                       ; Divide velocity by 64
        s    r1,r0                      ; Subtract from velocity
 move_6:
-       mov  r0,@vy                     ; Save velocity
+       mov  r0,@player_vy                     ; Save velocity
        sra  r0,6                       ; Shift to LSB
-       a    r0,@y                      ; Add to position
+       a    r0,@player_y                      ; Add to position
 *      Return
        b    *r11
 *// move
@@ -433,12 +436,12 @@ move_other_sprites_1:
        mov  *r3,r0
        jeq  move_other_sprites_4
 *      Check for out of bounds
-       mov  @x,r0
+       mov  @player_x,r0
        s  @sprite_x(r3),r0
        abs  r0
        ci   r0,>0400
        jgt  move_other_sprite_2
-       mov  @y,r1
+       mov  @player_y,r1
        s  @sprite_y(r3),r1
        abs  r1
        ci   r1,>0400
@@ -493,32 +496,27 @@ upload_sprites:
        ori  r0,>0038
        sla  r0,7
 *      Player
-       mov  @joystick_input,r1
-       jne  upload_sprites_1
        mov  @player_pattern,r1
-       jmp  upload_sprites_2
-upload_sprites_1:
-       srl  r1,1
-       movb @dir_sprite_table(r1),r2
-       mov  @player_pattern,r1
+       mov  @joystick_input,r2
+       jeq  upload_sprites_1
+       srl  r2,1
+       movb @dir_sprite_table(r2),r2
        cb   r2,r1
-       jeq  upload_sprites_2
-       ai   r1,->0040
-       andi r1,>07ff
-upload_sprites_2:
+       jeq  upload_sprites_1
+       sb   @one,r1
+       andi r1,>9f0f
        mov  r1,@player_pattern
-       sla  r1,2
-       ai   r1,>a000
+upload_sprites_1:
        ai   r0,16+2
        bl   @vsbw
-       movb @player_init+3,*r13
+       movb @r1lb,*r13
 *      Tile and enemy sprites
-       mov  @y,r6
-       andi r6,>fffc
-       neg  r6
-       mov  @x,r7
-       andi r7,>fffc
-       neg  r7
+       mov  @player_y,r6
+       andi r6,>fffc                   ; Needed for steady sprites
+       ai   r6,-(center_y*4)
+       mov  @player_x,r7
+       andi r7,>fffc                   ; Needed for steady sprites
+       ai   r7,-(center_x*4)
 *      Enemy pattern
        mov  @frame_no,r8
        andi r8,>001c
@@ -526,66 +524,65 @@ upload_sprites_2:
 *      Loop
        li   r2,1+n_sprites
        li   r3,sprite_list
-upload_sprites_3:
+upload_sprites_2:
        mov  *r3,r1
-       jeq  upload_sprites_6
+       jeq  upload_sprites_5
        ci   r3,enemy_sprite_list
-       jl   upload_sprites_4
+       jl   upload_sprites_3
        a    r8,r1
-upload_sprites_4:
-       mov  r6,r4
-       a    @sprite_y(r3),r4
+upload_sprites_3:
+       mov   @sprite_y(r3),r4
+       s    r6,r4
        sra  r4,2
-       ai   r4,center_y
-       mov  r7,r5
-       a    @sprite_x(r3),r5
+       mov   @sprite_x(r3),r5
+       s    r7,r5
        sra  r5,2
-       ai   r5,center_x
        ci   r4,191
-       jgt  upload_sprites_6
-       ci   r4,-15
-       jlt  upload_sprites_6
-       ci   r5,255
-       jgt  upload_sprites_6
-       ci   r5,-15
-       jlt  upload_sprites_6
-       ci   r5,0
        jgt  upload_sprites_5
+       ci   r4,-15
+       jlt  upload_sprites_5
+       ci   r5,255
+       jgt  upload_sprites_5
+       ci   r5,-15
+       jlt  upload_sprites_5
+       ci   r5,0
+       jgt  upload_sprites_4
        ai   r5,32
        ori  r1,>0080                   ; Set early clock
-upload_sprites_5:
+upload_sprites_4:
        dec  r4
        movb @r4lb,*r13
        movb @r5lb,*r13
        movb r1,*r13
        movb @r1lb,*r13
-upload_sprites_6:
+upload_sprites_5:
        ai   r3,sprite_size
        dec  r2
-       jne  upload_sprites_3
+       jne  upload_sprites_2
 *      End marker
-       movb @player_init+4,*r13
+       li   r1,>d000
+       movb r1,*r13
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
        b    *r11
 dir_sprite_table:
-       byte >00                        ; 0 None
-       byte >04                        ; 1 Left
-       byte >00                        ; 2 Right
-       byte >00                        ; 3 Left + right (N/A)
-       byte >02                        ; 4 Up
-       byte >07                        ; 5 Up + left
-       byte >05                        ; 6 Up + right
-       byte >05                        ; 7 Up + left + right (N/A)
-       byte >06                        ; 8 Down
-       byte >01                        ; 9 Down + left
-       byte >03                        ; A Down + right
-       byte >03                        ; B Down + left + right (N/A)
-       byte >02                        ; C Up + down (N/A)
-       byte >07                        ; D Up + down + left (N/A)
-       byte >05                        ; E Up + down + right (N/A)
-       byte >05                        ; F Up + down + left + right (N/A)
+       byte >80                        ; 0 None
+       byte >90                        ; 1 Left
+       byte >80                        ; 2 Right
+       byte >80                        ; 3 Left + right (N/A)
+       byte >88                        ; 4 Up
+       byte >9c                        ; 5 Up + left
+       byte >94                        ; 6 Up + right
+       byte >94                        ; 7 Up + left + right (N/A)
+       byte >98                        ; 8 Down
+       byte >84                        ; 9 Down + left
+       byte >8c                        ; A Down + right
+       byte >8c                        ; B Down + left + right (N/A)
+       byte >88                        ; C Up + down (N/A)
+       byte >9c                        ; D Up + down + left (N/A)
+       byte >94                        ; E Up + down + right (N/A)
+       byte >94                        ; F Up + down + left + right (N/A)
 *// update_sprites
 
 *********************************************************************************
@@ -611,10 +608,10 @@ update_name_table:
        bl   @vwad
        li   r0,8
 *      Tile offsets
-       mov  @x,r4
+       mov  @player_x,r4
        sra  r4,5                       ; Shift out pixels and sub-pixels
        andi r4,7                       ; Column offset
-       mov  @y,r5
+       mov  @player_y,r5
        mov  r5,r6
        sra r5,5                        ; Row offset
        andi r6,>001c                   ; Pixel row offset * 4
@@ -694,12 +691,12 @@ display_position:
        mov  @double_buffer_address,r0
        ai   r0,22*32+2
        bl   @vwad
-       mov  @x,r1
+       mov  @player_x,r1
        bl   @display_byte
        mov  @double_buffer_address,r0
        ai   r0,22*32+9
        bl   @vwad
-       mov  @y,r1
+       mov  @player_y,r1
        bl   @display_byte
 *      Return
        dect r10                        ; Pop return address off the stack
@@ -897,11 +894,11 @@ spawn_sprite_1:
        jlt  spawn_sprite_1             ; Try again if too close
 *      Finalize
        sla  r4,8
-       a    @x,r4
+       a    @player_x,r4
        andi r4,>ff00                   ; Round to meta tiles
        ori  r4,>0060                   ; Center on meta tile
        sla  r5,8
-       a    @y,r5
+       a    @player_y,r5
        andi r5,>ff00                   ; Round to meta tiles
        ori  r5,>0060                   ; Center on meta tile
 *      Check for other sprite at same position
@@ -934,14 +931,15 @@ spawn_sprite_3:
 init_game:
        mov  r11,*r10+                  ; Push return address onto the stack
        li   r0,start_x
-       mov  r0,@x
+       mov  r0,@player_x
        li   r0,start_y
-       mov  r0,@y
-       clr  @vx
-       clr  @vy
+       mov  r0,@player_y
+       clr  @player_vx
+       clr  @player_vy
        clr  @double_buffer_flag
        clr  @frame_no
-       clr  @player_pattern
+       li   r0,>8008
+       mov  r0,@player_pattern
        clr  @lives
        clr  @level
        clr  @score
@@ -958,7 +956,7 @@ init_game_1:
        jne  init_game_1
        li   r8,n_enemy_sprites
 init_game_2:
-       li   r0,>800d
+       li   r0,>a00d
        mov  r0,*r3
        bl   @spawn_enemy_sprite
        ai   r3,sprite_size
