@@ -30,11 +30,11 @@ chr_space:
 chr_plus:
        equ  >e1
 chr_minus:
-       equ  >e3
+       equ  >e2
 chr_zero:
-       equ  >e5
+       equ  >e4
 chr_question:
-       equ  >f1
+       equ  >f0
 n_tile_sprites:
        equ  8
 n_enemy_sprites:
@@ -116,8 +116,10 @@ double_buffer_address:
        equ double_buffer_flag+2
 joystick_input:
        equ  double_buffer_address+2
-player_pattern:
+fire:
        equ  joystick_input+2
+player_pattern:
+       equ  fire+2
 x:                                     ; smmmmmmmtttpppff s=sign, m=metatile, t=tile, p=pixel, f=fraction
        equ  player_pattern+2
 y:                                     ; smmmmmmmtttpppff
@@ -130,12 +132,12 @@ ax:                                    ; ppppppppssssssss
        equ  vy+2
 ay:                                    ; ppppppppssssssss
        equ  ax+2
-goto_x:
+target_x:
        equ  ay+2
-goto_y:
-       equ  goto_x+2
+target_y:
+       equ  target_x+2
 lives:
-       equ  goto_y+2
+       equ  target_y+2
 level:
        equ  lives+2
 score:
@@ -272,14 +274,32 @@ check_collisions_1:
 *      Collision
        ci   r3,tile_sprite_list
        jhe  check_collisions_2
-       bl   @update_goto_position
+       bl   @update_target_position
        a    @d100,@score
        bl   @display_score
        jmp  check_collisions_5
 check_collisions_2:
        ci   r3,enemy_sprite_list
        jhe  check_collisions_3
-       bl   @spawn_tile_sprite
+;       bl   @spawn_tile_sprite
+       mov  @sprite_count(r3),r0
+       jne  check_collisions_5
+       mov  @vx,r0
+       mov  r0,@sprite_vx(r3)
+       neg  r0
+       sra  r0,5
+       mov  r0,@sprite_ax(r3)
+       mov  @vy,r0
+       mov  r0,@sprite_vy(r3)
+       neg  r0
+       sra  r0,5
+       mov  r0,@sprite_ay(r3)
+       neg  @vx
+       neg  @vy
+       neg  @ax
+       neg  @ay
+       li   r0,32
+       mov  r0,@sprite_count(r3)
        a    @d10,@score
        bl   @display_score
        jmp  check_collisions_5
@@ -304,6 +324,7 @@ check_collisions_5:
 user_input:
        clr  @ax
        clr  @ay
+       clr  @fire
 *      Read joystick #1 using CRU
        li   r12,>0024                  ; CRU address of the column decoder
        li   r0,>0600                   ; Column 6, i.e joystick #1
@@ -318,31 +339,31 @@ user_input:
 *      Up
        sla  r0,4
        jnc  user_input_1
-       li   r1,->0040
+       li   r1,->0020
        mov  r1,@ay
 user_input_1:
 *      Down
        sla  r0,1
        jnc  user_input_2
-       li   r1,>0040
+       li   r1,>0020
        mov  r1,@ay
 user_input_2:
 *      Right
        sla  r0,1
        jnc  user_input_3
-       li   r1,>0040
+       li   r1,>0020
        mov  r1,@ax
 user_input_3:
 *      Left
        sla  r0,1
        jnc  user_input_4
-       li   r1,->0040
+       li   r1,->0020
        mov  r1,@ax
 user_input_4:
 *      Fire
        sla  r0,1
        jnc  user_input_5
-       ;      TODO
+       seto @fire
 user_input_5:
        b    *r11
 *// user_input
@@ -368,11 +389,11 @@ move_1:
        clr  r0                         ; Stop
        jmp  move_3
 move_2:
-       sra  r1,6                       ; Divide velocity by 16
+       sra  r1,6                       ; Divide velocity by 64
        s    r1,r0                      ; Subtract from velocity
 move_3:
        mov  r0,@vx                     ; Save velocity
-       sra  r0,8                       ; Shift to LSB
+       sra  r0,6                       ; Shift to LSB
        a    r0,@x                      ; Add to position
 *      Y
        mov  @vy,r0                     ; Velocity
@@ -390,11 +411,11 @@ move_4:
        clr  r0                         ; Stop
        jmp  move_6
 move_5:
-       sra  r1,6                       ; Divide velocity by 16
+       sra  r1,6                       ; Divide velocity by 64
        s    r1,r0                      ; Subtract from velocity
 move_6:
        mov  r0,@vy                     ; Save velocity
-       sra  r0,8                       ; Shift to LSB
+       sra  r0,6                       ; Shift to LSB
        a    r0,@y                      ; Add to position
 *      Return
        b    *r11
@@ -405,6 +426,7 @@ move_6:
 * Move other sprites
 *
 move_other_sprites:
+       mov  r11,*r10+                  ; Push return address onto the stack
        li   r2,n_tile_sprites+n_enemy_sprites
        li   r3,tile_sprite_list
 move_other_sprites_1:
@@ -418,17 +440,27 @@ move_other_sprites_1:
        mov  @sprite_vy(r3),r0
        sra  r0,6
        a    r0,@sprite_y(r3)
+       ci   r3,enemy_sprite_list
+       jhe  move_other_sprites_2
+*      Sprite counter
+       mov  @sprite_count(r3),r0
+       jeq  move_other_sprites_2
+       dec  @sprite_count(r3)
+       jgt  move_other_sprites_2
+       bl   @spawn_tile_sprite
 move_other_sprites_2:
        ai   r3,sprite_size
        dec  r2
        jne  move_other_sprites_1
 *      Return
+       dect r10                        ; Pop return address off the stack
+       mov  *r10,r11
        b    *r11
 *// move_other_sprites
 
 *********************************************************************************
 *
-* Update sprites
+* Upload sprites to VDP, remove if out of bounds
 *
 update_sprites:
        mov  r11,*r10+                  ; Push return address onto the stack
@@ -505,8 +537,9 @@ update_sprites_4:
        movb r1,*r13
        movb @r1lb,*r13
        jmp  update_sprites_8
+*      Sprite of of screen
 update_sprites_5:
-       ci   r3,sprite_list
+       ci   r3,sprite_list             ; OK for target sprite to be out of screen
        jeq  update_sprites_8
        ci   r4,2*192
        jgt  update_sprites_6
@@ -520,9 +553,11 @@ update_sprites_5:
 update_sprites_6:
        ci   r3,enemy_sprite_list
        jhe  update_sprites_7
+*      Tile sprite out of bounds
        bl   @spawn_tile_sprite
        jmp  update_sprites_8
 update_sprites_7:
+*      Enemy sprite out of bounds
        bl   @spawn_enemy_sprite
 update_sprites_8:
        ai   r3,sprite_size
@@ -674,53 +709,53 @@ display_position:
 
 *********************************************************************************
 *
-* Display goto position
+* Display target position
 *
-display_goto_position:
+display_target_position:
        mov  r11,*r10+                  ; Push return address onto the stack
        mov  @double_buffer_address,r0
        ai   r0,22*32+21
        bl   @vwad
-       mov  @goto_x,r1
+       mov  @target_x,r1
        bl   @display_byte
        mov  @double_buffer_address,r0
        ai   r0,22*32+28
        bl   @vwad
-       mov  @goto_y,r1
+       mov  @target_y,r1
        bl   @display_byte
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
        b    *r11
-*// display_goto_position
+*// display_target_position
 
 *********************************************************************************
 *
-* Update goto position
+* Update target position
 *
-update_goto_position:
+update_target_position:
        mov  r11,*r10+                  ; Push return address onto the stack
        bl   @rand
        andi r0,>ff00
        ori  r0,>0060
 ;      li   r0,>0160
-       mov  r0,@goto_x
+       mov  r0,@target_x
        mov  r0,@sprite_list+sprite_x
        bl   @rand
        andi r0,>ff00
        ori  r0,>0060
 ;      li   r0,>0160
-       mov  r0,@goto_y
+       mov  r0,@target_y
        mov  r0,@sprite_list+sprite_y
        li   r0,>c00a
        mov  r0,@sprite_list+sprite_pattern
 *      Display position
        li   r0,nametb
        mov  r0,@double_buffer_address
-       bl   @display_goto_position
+       bl   @display_target_position
        li   r0,namet1
        mov  r0,@double_buffer_address
-       bl   @display_goto_position
+       bl   @display_target_position
 *      Reset time
        li   r0,>6400
        mov  r0,@time_left
@@ -737,7 +772,7 @@ update_goto_position:
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
        b    *r11
-*// update_goto_position
+*// update_target_position
 
 *********************************************************************************
 *
@@ -885,6 +920,7 @@ spawn_sprite_3:
 *      Update position
        mov  r4,@sprite_x(r3)
        mov  r5,@sprite_y(r3)
+       clr  @sprite_count(r3)
 *      Return
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
@@ -910,7 +946,7 @@ init_game:
        clr  @level
        clr  @score
        bl   @display_score
-       bl   @update_goto_position
+       bl   @update_target_position
        li   r8,n_tile_sprites
        li   r3,tile_sprite_list
 init_game_1:
@@ -1181,6 +1217,11 @@ vmbr_1:
 *
        copy "charset.a99"
        copy "map.a99"
+
+text_fire_to_start:
+       text "FIRE TO START"
+text_game_over:
+       text "GAME OVER"
 
 *********************************************************************
 *

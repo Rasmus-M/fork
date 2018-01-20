@@ -11,7 +11,7 @@ charset:
 ;      byte 41    )    (Round brackets end)
 ;      byte 42    *    (Asterisk)            
        byte 43    +    (Plus sign)
-       byte 44    ,    (Comma)             Not used
+;      byte 44    ,    (Comma)
        byte 45    -    (Hyphen)            
        byte 46    .    (Full stop , dot)   Not used
 ;      byte 47    /    (Slash)            
@@ -32,7 +32,7 @@ charset:
 ;      byte 62    >    (Greater-than sign)
        byte 63    ?    (Question mark)
 ;      byte 64    @    (At sign)            
-;      byte 65    A    (Capital A)
+       byte 65    A    (Capital A)
 ;      byte 66    B    (Capital B)
        byte 67    C    (Capital C)
 ;      byte 68    D    (Capital D)
