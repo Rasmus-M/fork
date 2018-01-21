@@ -341,20 +341,12 @@ check_collisions_5:
 * User input
 *
 user_input:
+       mov  r11,*r10+                  ; Push return address onto the stack
        clr  @player_ax
        clr  @player_ay
        clr  @fire
 *      Read joystick #1 using CRU
-       li   r12,>0024                  ; CRU address of the column decoder
-       li   r0,>0600                   ; Column 6, i.e joystick #1
-       ldcr r0,3                       ; Select it
-       li   r12,>0006                  ; Base CRU address for joystick 1
-       stcr r1,8
-       inv  r1
-       andi r1,>ff00
-       mov  r1,r0
-       swpb r1
-       mov  r1,@joystick_input
+       bl   @read_joystick
 *      Up
        sla  r0,4
        jnc  user_input_1
@@ -384,7 +376,7 @@ user_input_4:
        jnc  user_input_5
        seto @fire
 user_input_5:
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// user_input
 
 *********************************************************************************
@@ -433,9 +425,9 @@ move_5:
        sra  r1,6                       ; Divide velocity by 64
        s    r1,r0                      ; Subtract from velocity
 move_6:
-       mov  r0,@player_vy                     ; Save velocity
+       mov  r0,@player_vy              ; Save velocity
        sra  r0,6                       ; Shift to LSB
-       a    r0,@player_y                      ; Add to position
+       a    r0,@player_y               ; Add to position
 *      Return
        b    *r11
 *// move
@@ -1176,6 +1168,25 @@ display_text_4:
 *      Return
        b    *r15                       ; Pop return address and return
 *// display_text
+
+
+*********************************************************************
+*
+*      Read joystick #1 using CRU
+*
+read_joystick:
+       li   r12,>0024                  ; CRU address of the column decoder
+       li   r0,>0600                   ; Column 6, i.e joystick #1
+       ldcr r0,3                       ; Select it
+       li   r12,>0006                  ; Base CRU address for joystick 1
+       stcr r1,8
+       inv  r1
+       andi r1,>ff00
+       mov  r1,r0
+       swpb r1
+       mov  r1,@joystick_input
+       b    *r11
+*// read_joystick
 
 *********************************************************************
 *

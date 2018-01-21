@@ -10,7 +10,7 @@ rem E/A#5 file
 xas99.py -R -i -o 4kcompo source/disk.a99
 xdm99.py 4kcompo.dsk -a 4kcompo -n 4KCOMPO
 
-rem clean up disk
+rem clean up
 IF EXIST 4kcompo.bin_6000 (
 del 4kcompo.bin_6000
 )
@@ -23,4 +23,4 @@ xas99.py -b -R -D cart -o 4kcompo.bin source/cart.a99
 ren 4kcompo.bin_6000 4kcompo.bin
 
 rem 32k cart
-rem java -jar tools/ea5tocart.jar 4kcompo "4K COMPO" > make.log
+java -jar tools/ea5tocart.jar 4kcompo "4K COMPO" > make.log
