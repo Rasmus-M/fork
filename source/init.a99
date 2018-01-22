@@ -4,7 +4,6 @@
 *
 init:
        mov  r11,*r10+                  ; Push return address onto the stack
-       bl   @f18a_init
        bl   @gmode
        li   r0,copy_loop_1
        li   r1,copy_loop
@@ -225,10 +224,6 @@ init_gfx:
        li   r2,16
        bl   @vsmw
 *      Sprite patterns
-;       li   r0,sprptb+>400
-;       li   r1,SPR0
-;       li   r2,n_sprite_patterns*32
-;       bl   @vmbw
        bl   @decomp_sprites
 *      Sprite attributes
        li   r0,spratb
@@ -366,66 +361,32 @@ decomp_sprites_7:
 *
 gmode:
        mov  r11,*r10+                  ; Push return address onto the stack
-       clr  r0
        li   r1,vregs
-       li   r2,8
+       li   r2,12
 gmode_1:
-       movb *r1+,@r0lb
+       mov  *r1+,r0
        bl   @vwtr                      ; Set register
-       ai   r0,>0100
        dec  r2
        jne  gmode_1
-*      Clear VDP RAM
-       clr  r0
-       clr  r1
-       li   r2,>4000
-       bl   @vsmw
+;*      Clear VDP RAM
+;       clr  r0
+;       clr  r1
+;       li   r2,>4000
+;       bl   @vsmw
 *      Return
        b    *r15                       ; Pop return address and return
 *      VDP registers
 vregs:
-       byte >00                        ; Graphics II mode
-       byte >a2                        ; 16K, display off, interrupt enabled, 16x16 sprites
-       byte nametb/>400                ; Name table
-       byte colrtb/>40                 ; Color table
-       byte ptrntb/>800                ; Pattern table
-       byte spratb/>80                 ; Sprite attribute table
-       byte sprptb/>800                ; Sprite pattern table
-       byte >01                        ; Backdrop color
+       byte >39,>1c                    ; F18A unlock
+       byte >39,>1c                    ; F18A unlock
+       byte >1e,>04                    ; Set four sprites per line
+       byte >39,>1c                    ; F18A lock
+       byte >00,>00                    ; Graphics II mode
+       byte >01,>a2                    ; 16K, display off, interrupt enabled, 16x16 sprites
+       byte >02,nametb/>400            ; Name table
+       byte >03,colrtb/>40             ; Color table
+       byte >04,ptrntb/>800            ; Pattern table
+       byte >05,spratb/>80             ; Sprite attribute table
+       byte >06,sprptb/>800            ; Sprite pattern table
+       byte >07,>01                    ; Backdrop color
 *// gmode
-
-********************************************************************************
-*
-* F18A initalize
-*
-* If an F18A is present we need to set the number of sprites per line to four.
-*
-f18a_init:
-       mov  r11,*r10+                  ; Push return address onto the stack
-*      F18A  Unlock
-       li   r0,>391c                   ; VR1/57, value 00011100
-       bl   @vwtr                      ; Write once
-       bl   @vwtr                      ; Write twice, unlock
-*      Disable interrupts
-       li   r0,>01c2
-       bl   @vwtr
-*      Check the version status reg
-       mov  @vdpsta,r0                  ; Clear status
-       li   r0,>0f01                    ; Set to read reg 1, Identity
-       bl   @vwtr
-       movb @vdpsta,r0
-       andi r0,>f000
-       ci   r0,>e000
-       jne  f18a_init_1
-*      Set four sprites per line
-       li   r0, >1e04
-       bl   @vwtr
-f18a_init_1:
-       li   r0, >0f00                   ; Set to read reg 0
-       bl   @vwtr
-*      Enable interrupts
-       li   r0, >01e2                   ; Set Reg 1 to a sane value
-       bl   @vwtr                      ; Write
-*      Return
-       b    *r15                       ; Pop return address and return
-*// f18a_init

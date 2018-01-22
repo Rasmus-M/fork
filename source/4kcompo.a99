@@ -1,6 +1,6 @@
 *********************************************************************
 *
-* 4K Compo
+* Fork - 4K Compo
 * For the TI-99/4A home computer
 *
 * January 2017
@@ -108,10 +108,8 @@ padvar equ  stack+>20                  ; Start of pad variables
 *
 * PAD variables
 *
-one:
-       equ  padvar
 rand_no:
-       equ  one+2
+       equ  padvar
 frame_no:
        equ  rand_no+2
 coinc:
@@ -196,7 +194,6 @@ sprite_size:
        mov  @rndsd,@rand_no            ; Save random number seed
        li   r13,vdpwd                  ; Do not change
        li   r15,main_return
-       seto @one
        bl   @init
        bl   @init_game
 main_loop:
@@ -511,7 +508,7 @@ upload_sprites:
        movb @dir_sprite_table(r2),r2
        cb   r2,r1
        jeq  upload_sprites_1
-       sb   @one,r1
+       sb   @mone,r1
        andi r1,>9f0f
        mov  r1,@player_pattern
 upload_sprites_1:
@@ -1322,8 +1319,13 @@ vmbr_1:
 
 text_fire_to_start:
        text "FIRE TO START"
+       byte 0
 text_game_over:
        text "GAME OVER"
+       byte 0
+
+one:   byte >01
+mone:  byte >ff
 
 *********************************************************************
 *
