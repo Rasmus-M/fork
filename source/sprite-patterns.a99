@@ -1,0 +1,126 @@
+sprite_pat_00:
+       byte >f0,>42,>e4,>c5,>b7,>99,>7a,>6c,>4c,>4a,>69,>77,>95,>b4,>c2,>f0,>c0
+sprite_pat_01:
+       byte >f0,>f0,>44,>c7,>9a,>6d,>4c,>4b,>5a,>78,>87,>96,>b4,>c3,>d2,>f0,>a0
+sprite_pat_02:
+       byte >f0,>f0,>f0,>4e,>2e,>3c,>4c,>5a,>78,>88,>96,>a6,>b4,>d2,>e2,>f0,>80
+sprite_pat_03:
+       byte >f0,>f0,>c4,>97,>6a,>3d,>3c,>5b,>6a,>78,>97,>a6,>b4,>d3,>e2,>f0,>60
+sprite_pat_04:
+       byte >f0,>c2,>c4,>b5,>97,>79,>6a,>4c,>4c,>6a,>79,>97,>b5,>c4,>e2,>f0,>40
+sprite_pat_05:
+       byte >f0,>a2,>d3,>c4,>b6,>97,>88,>7a,>5b,>4c,>4d,>6a,>97,>c4,>f0,>f0,>40
+sprite_pat_06:
+       byte >f0,>82,>e2,>d4,>b6,>a6,>98,>88,>7a,>5c,>4c,>3e,>2e,>f0,>f0,>f0,>40
+sprite_pat_07:
+       byte >f0,>62,>e3,>d4,>b6,>a7,>98,>7a,>6b,>5c,>3d,>3a,>67,>94,>f0,>f0,>c0
+sprite_pat_08:
+       byte >f0,>f0,>4c,>4c,>4c,>4c,>4c,>4c,>4c,>4c,>4c,>4c,>4c,>4c,>f0,>f0,>40
+sprite_pat_09:
+       byte >f0,>95,>6a,>4c,>4d,>4c,>4c,>4c,>4c,>4d,>4c,>4c,>4b,>56,>f0,>f0,>90
+sprite_pat_10:
+       byte >a2,>b5,>98,>5b,>4c,>4d,>3d,>4d,>3d,>3d,>4d,>3c,>58,>86,>b2,>f0,>a0
+sprite_pat_11:
+       byte >92,>d3,>b6,>97,>7a,>4d,>2e,>3e,>2f,>2e,>3d,>3b,>69,>86,>a5,>c2,>80
+sprite_pat_12:
+       byte >72,>d4,>b6,>98,>7a,>5c,>3e,>1f,>0f,>02,>1e,>3c,>5a,>78,>96,>b4,>d2,>70
+sprite_pat_13:
+       byte >61,>e3,>c6,>a7,>8a,>5c,>4e,>1e,>1f,>1e,>2d,>5b,>69,>96,>b5,>d2,>60
+sprite_pat_14:
+       byte >f0,>52,>e5,>a8,>8a,>6c,>3d,>3d,>2d,>3d,>2e,>2d,>4c,>78,>a6,>d2,>50
+sprite_pat_15:
+       byte >f0,>f0,>55,>ba,>6c,>3d,>3c,>4c,>4c,>4c,>3d,>3c,>4c,>5b,>a6,>f0,>40
+sprite_pat_16:
+       byte >81,>e3,>d3,>d3,>c5,>65,>19,>23,>11,>17,>43,>17,>69,>79,>79,>6b,>54,>11,>14,>53,>53,>43,>73,>41,>91,>20
+sprite_pat_17:
+       byte >56,>8a,>5c,>3e,>24,>19,>14,>11,>1e,>18,>1e,>1f,>01,>1e,>1e,>11,>11,>1c,>11,>29,>11,>12,>35,>11,>11,>12,>53,>11,>11,>12,>86,>50
+sprite_pat_18:
+       byte >41,>11,>11,>11,>89,>6b,>4d,>27,>35,>25,>4b,>55,>23,>6b,>11,>35,>26,>3d,>35,>26,>36,>25,>35,>4b,>69,>87,>40
+sprite_pat_19:
+       byte >f0,>f0,>f0,>f0,>f0,>f0,>d2,>d4,>c4,>d2,>f0,>f0,>f0,>f0,>f0,>f0,>d0
+
+****************************************
+* Sprite patterns
+****************************************
+
+;SPR0   DATA >0018,>1E1F,>1F1F,>1F1F
+;       DATA >1F1F,>1F1F,>1F1E,>1800
+;       DATA >0000,>0000,>C0F0,>F8FE
+;       DATA >FEF8,>F0C0,>0000,>0000
+;SPR1   DATA >0000,>3C3F,>3F3F,>1F1F
+;       DATA >1F0F,>0F0F,>0707,>0600
+;       DATA >0000,>0080,>F0FE,>FEFC
+;       DATA >F8F0,>E0C0,>8000,>0000
+;SPR2   DATA >0000,>007F,>7F3F,>3F1F
+;       DATA >0F0F,>0707,>0301,>0100
+;       DATA >0000,>00FE,>FEFC,>FCF8
+;       DATA >F0F0,>E0E0,>C080,>8000
+;SPR3   DATA >0000,>0001,>0F7F,>7F3F
+;       DATA >1F0F,>0703,>0100,>0000
+;       DATA >0000,>3CFC,>FCFC,>F8F8
+;       DATA >F8F0,>F0F0,>E0E0,>6000
+;SPR4   DATA >0000,>0000,>030F,>1F7F
+;       DATA >7F1F,>0F03,>0000,>0000
+;       DATA >0018,>78F8,>F8F8,>F8F8
+;       DATA >F8F8,>F8F8,>F878,>1800
+;SPR5   DATA >0000,>0001,>0307,>0F1F
+;       DATA >3F7F,>7F0F,>0100,>0000
+;       DATA >0060,>E0E0,>F0F0,>F0F8
+;       DATA >F8F8,>FCFC,>FC3C,>0000
+;SPR6   DATA >0001,>0103,>0707,>0F0F
+;       DATA >1F3F,>3F7F,>7F00,>0000
+;       DATA >0080,>80C0,>E0E0,>F0F0
+;       DATA >F8FC,>FCFE,>FE00,>0000
+;SPR7   DATA >0006,>0707,>0F0F,>0F1F
+;       DATA >1F1F,>3F3F,>3F3C,>0000
+;       DATA >0000,>0080,>C0E0,>F0F8
+;       DATA >FCFE,>FEF0,>8000,>0000
+;SPR8   DATA >0000,>3F3F,>3F3F,>3F3F
+;       DATA >3F3F,>3F3F,>3F3F,>0000
+;       DATA >0000,>FCFC,>FCFC,>FCFC
+;       DATA >FCFC,>FCFC,>FCFC,>0000
+;SPR9   DATA >0000,>1F7F,>7F3F,>3F3F
+;       DATA >3F3F,>1F1F,>1F1F,>0000
+;       DATA >00F8,>F8F8,>FCFC,>FCFC
+;       DATA >FCFE,>FEFE,>FC80,>0000
+;SPR10  DATA >0001,>073F,>7F7F,>7F3F
+;       DATA >3F3F,>1F1F,>0F0F,>0600
+;       DATA >30F0,>F8F8,>F8FC,>FCFE
+;       DATA >FEFE,>FFFE,>F0C0,>0000
+;SPR11  DATA >0000,>0307,>1F7F,>FF7F
+;       DATA >7F3F,>1F1F,>0F07,>0703
+;       DATA >60E0,>F0F0,>F8FC,>FCFE
+;       DATA >FFFF,>FFFC,>F8E0,>C000
+;SPR12  DATA >0103,>070F,>1F3F,>7FFF
+;       DATA >FF7F,>3F1F,>0F07,>0301
+;       DATA >80C0,>E0F0,>F8FC,>FEFF
+;       DATA >FFFE,>FCF8,>F0E0,>C080
+;SPR13  DATA >0207,>0F0F,>1F3F,>3F7F
+;       DATA >FFFF,>FF3F,>1F07,>0300
+;       DATA >0000,>C0E0,>F8FC,>FFFE
+;       DATA >FEFC,>F8F8,>F0E0,>E0C0
+;SPR14  DATA >000C,>0F1F,>1F1F,>3F3F
+;       DATA >7F7F,>FFFF,>7F0F,>0300
+;       DATA >0000,>80E0,>F8FE,>FEFE
+;       DATA >FCFC,>FCF8,>F8F0,>F060
+;SPR15  DATA >0000,>1F1F,>1F3F,>3F3F
+;       DATA >3F3F,>7F7F,>7F3F,>0100
+;       DATA >0000,>00F8,>FEFE,>FCFC
+;       DATA >FCFC,>FCF8,>F8F8,>F800
+;SPR16  DATA >0001,>0101,>037D,>3A1D
+;       DATA >0F0F,>0F1F,>1E1C,>3810
+;       DATA >80C0,>C0C0,>E0FF,>FEFC
+;       DATA >F8F8,>F8FC,>BC1C,>0E04
+;SPR17  DATA >071F,>3F7F,>7BF5,>FBFF
+;       DATA >FFFF,>FF7F,>7F3E,>1D07
+;       DATA >E0F8,>FCFE,>FEFF,>FDFB
+;       DATA >FDFB,>F5FA,>D6AC,>58E0
+;SPR18  DATA >0A1F,>3F7F,>FE7C,>F870
+;       DATA >FA7E,>FE7E,>3E1F,>0F05
+;       DATA >A0F0,>F8FC,>3E3F,>3E3F
+;       DATA >3E3F,>3E3F,>3EFC,>F850
+;SPR19  DATA >0000,>0000,>0000,>0103
+;       DATA >0301,>0000,>0000,>0000
+;       DATA >0000,>0000,>0000,>80C0
+;       DATA >C080,>0000,>0000,>0000
+

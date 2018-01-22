@@ -225,10 +225,11 @@ init_gfx:
        li   r2,16
        bl   @vsmw
 *      Sprite patterns
-       li   r0,sprptb+>400
-       li   r1,SPR0
-       li   r2,20*32
-       bl   @vmbw
+;       li   r0,sprptb+>400
+;       li   r1,SPR0
+;       li   r2,n_sprite_patterns*32
+;       bl   @vmbw
+       bl   @decomp_sprites
 *      Sprite attributes
        li   r0,spratb
        li   r3,2
@@ -285,6 +286,79 @@ init_gfx_6:
 *      Return
        b    *r15                       ; Pop return address and return
 *// init_gfx
+
+
+*********************************************************************************
+*
+* Decompress sprite patterns
+*
+decomp_sprites:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       li   r0,sprptb+>400
+       bl   @vwad
+       li   r1,1
+       li   r2,n_sprite_patterns       ; Sprite counter
+       li   r3,sprite_pat_00           ; Source pointer
+decomp_sprites_1:
+       clr  r0                         ; Run counter
+       li   r4,16                      ; Row counter
+       li   r5,buffer                  ; Destination pointer
+       clr  r6                         ; Pixel on/off flag
+decomp_sprites_2:
+       clr  r7                         ; Pixel row
+       li   r8,16                      ; Pixel counter
+decomp_sprites_3:
+       mov  r0,r0                      ; Check run counter
+       jgt  decomp_sprites_8
+*      Get a new run count
+decomp_sprites_10:
+       mov  r6,r6
+       jne  decomp_sprites_4
+       movb *r3,r0                     ; Pixel off run
+       srl  r0,12
+       jmp  decomp_sprites_5
+decomp_sprites_4:
+       movb *r3+,r0                    ; Pixel on run
+       swpb r0
+       andi r0,>000f
+decomp_sprites_5:
+       jne  decomp_sprites_8
+       xor  r1,r6                      ; 0 -> 1, 1 -> 0
+       jmp  decomp_sprites_10
+*      Set pixel
+decomp_sprites_8:
+       sla  r7,1
+       soc  r6,r7
+*      Decrement run counter
+       dec  r0
+       jgt  decomp_sprites_6
+decomp_sprites_9:
+       xor  r1,r6                      ; 0 -> 1, 1 -> 0
+*      Next pixel
+decomp_sprites_6:
+       dec  r8
+       jne  decomp_sprites_3
+*      Update buffer
+       movb @r7lb,@16(r5)
+       movb r7,*r5+
+*      Next row
+       dec  r4
+       jne  decomp_sprites_2
+*      Upload sprite
+       li   r4,32
+       li   r5,buffer
+decomp_sprites_7:
+       movb *r5+,*r13
+       dec  r4
+       jne  decomp_sprites_7
+*      Next sprite
+       inc  r3                         ; Because we always end at pixel off
+       dec  r2
+       jne  decomp_sprites_1
+*      Return
+       b    *r15                       ; Pop return address and return
+*// decomp_sprites
+
 
 *********************************************************************************
 *

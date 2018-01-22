@@ -4,7 +4,7 @@ xdm99.py 4kcompo.dsk --initialize DSSD -n 4KCOMPO
 :dskok
 
 rem object file
-xas99.py -R -S -L 4kcompo.lst source/disk.a99
+xas99.py -R -S -L 4kcompo.lst -o 4kcompo.obj source/disk.a99
 
 rem E/A#5 file
 xas99.py -R -i -o 4kcompo source/disk.a99

@@ -35,6 +35,8 @@ chr_zero:
        equ  >e4
 chr_question:
        equ  >f0
+n_sprite_patterns:
+       equ   20
 n_tile_sprites:
        equ  8
 n_enemy_sprites:
@@ -1342,6 +1344,7 @@ text_line_2:
        byte 0
 
        copy "graphics.a99"
+       copy "sprite-patterns.a99"
 
 map_rows:
        equ  text_line_1
