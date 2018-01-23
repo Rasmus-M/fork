@@ -343,7 +343,6 @@ user_input:
        mov  r11,*r10+                  ; Push return address onto the stack
        clr  @player_ax
        clr  @player_ay
-       clr  @fire
 *      Read joystick #1 using CRU
        bl   @read_joystick
 *      Up
@@ -373,8 +372,16 @@ user_input_4:
 *      Fire
        sla  r0,1
        jnc  user_input_5
-       seto @fire
+*      Fire pressed
+       mov  @fire,r0
+       jlt  user_input_6               ; Skip if pressed and not released
+       seto @fire                      ; Signal pressed = -1
+       bl   @add_bullet_sprite
+       jmp  user_input_6
 user_input_5:
+*      Fire not pressed
+       neg  @fire                      ; Signal released: -1 -> 1, 0 -> 0
+user_input_6:
        b    *r15                       ; Pop return address and return
 *// user_input
 
@@ -980,6 +987,28 @@ spawn_sprite_3:
 
 *********************************************************************************
 *
+* Add bullet sprite
+*
+add_bullet_sprite:
+       li   r2,n_bullet_sprites
+       li   r3,bullet_sprite_list
+add_bullet_sprite_1:
+       mov  *r3,r0
+       jeq  add_bullet_sprite_2
+       dec  r3
+       jne  add_bullet_sprite_1
+       jmp  add_bullet_sprite_3
+add_bullet_sprite_2:
+       li   r0,>cc07
+       mov  r0,*r3+
+       mov  @player_x,*r3+
+       mov  @player_y,*r3+
+add_bullet_sprite_3:
+       b    *r11
+*// add_bullet_sprite
+
+*********************************************************************************
+*
 * Initialize game
 *
 init_game:
@@ -1171,19 +1200,21 @@ display_text_4:
 
 *********************************************************************
 *
-*      Read joystick #1 using CRU
+* Read joystick #1 using CRU
+*
+* Result: R0 MSB contains 0, 0, 0, Up, Down, Right, Left, Fire
 *
 read_joystick:
        li   r12,>0024                  ; CRU address of the column decoder
        li   r0,>0600                   ; Column 6, i.e joystick #1
        ldcr r0,3                       ; Select it
        li   r12,>0006                  ; Base CRU address for joystick 1
-       stcr r1,8
-       inv  r1
-       andi r1,>ff00
-       mov  r1,r0
-       swpb r1
-       mov  r1,@joystick_input
+       stcr r1,8                       ; Read 8 bites into MSB
+       inv  r1                         ; Make 1=pressed
+       andi r1,>ff00                   ; Clear LSB
+       mov  r1,r0                      ; Copy
+       swpb r1                         ; Move to LSB
+       mov  r1,@joystick_input         ; Save in variable
        b    *r11
 *// read_joystick
 
