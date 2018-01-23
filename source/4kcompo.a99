@@ -44,7 +44,7 @@ n_enemy_sprites:
 n_bullet_sprites:
        equ  2
 n_sprites:
-       equ  n_tile_sprites+n_enemy_sprites
+       equ  n_tile_sprites+n_enemy_sprites+n_bullet_sprites
 **
 * Memory mapped addresses
 *
@@ -136,8 +136,12 @@ player_ax:                             ; ppppppppssssssss
        equ  player_vy+2
 player_ay:                             ; ppppppppssssssss
        equ  player_ax+2
-target_x:
+player_dx:
        equ  player_ay+2
+player_dy:
+       equ  player_dx+2
+target_x:
+       equ  player_dy+2
 target_y:
        equ  target_x+2
 lives:
@@ -324,6 +328,8 @@ check_collisions_2:
        a    @d10,@score
        jmp  check_collisions_5
 check_collisions_3:
+       ci   r3,bullet_sprite_list
+       jhe  check_collisions_5
        bl   @spawn_enemy_sprite
        jmp  check_collisions_5
 check_collisions_4:
@@ -369,18 +375,28 @@ user_input_3:
        li   r1,->0020
        mov  r1,@player_ax
 user_input_4:
+*      If any input, set direction
+       mov  @joystick_input,r1
+       jeq  user_input_7
+       mov  @player_ay,r1
+       sla  r1,6
+       mov  r1,@player_dy
+       mov  @player_ax,r1
+       sla  r1,6
+       mov  r1,@player_dx
+user_input_7:
 *      Fire
        sla  r0,1
        jnc  user_input_5
 *      Fire pressed
        mov  @fire,r0
-       jlt  user_input_6               ; Skip if pressed and not released
-       seto @fire                      ; Signal pressed = -1
+       jne  user_input_6               ; Skip if pressed and not released
+       seto @fire                      ; Set pressed
        bl   @add_bullet_sprite
        jmp  user_input_6
 user_input_5:
 *      Fire not pressed
-       neg  @fire                      ; Signal released: -1 -> 1, 0 -> 0
+       clr  @fire                      ; Set released
 user_input_6:
        b    *r15                       ; Pop return address and return
 *// user_input
@@ -448,7 +464,7 @@ move_other_sprites:
        li   r3,tile_sprite_list
 move_other_sprites_1:
        mov  *r3,r0
-       jeq  move_other_sprites_4
+       jeq  move_other_sprites_5
 *      Check for out of bounds
        mov  @player_x,r0
        s  @sprite_x(r3),r0
@@ -469,26 +485,32 @@ move_other_sprites_1:
        mov  @sprite_vy(r3),r0
        sra  r0,6
        a    r0,@sprite_y(r3)
-*      Check sprite counter for enemies
+*      Check sprite counter for tiles
        ci   r3,enemy_sprite_list
-       jhe  move_other_sprites_4
+       jhe  move_other_sprites_5
        mov  @sprite_count(r3),r0
-       jeq  move_other_sprites_4
+       jeq  move_other_sprites_5
        dec  @sprite_count(r3)
-       jgt  move_other_sprites_4
+       jgt  move_other_sprites_5
        bl   @spawn_tile_sprite
-       jmp  move_other_sprites_4
+       jmp  move_other_sprites_5
 *      Out of bounds
 move_other_sprite_2:
        ci   r3,enemy_sprite_list
        jhe  move_other_sprites_3
 *      Tile sprite out of bounds
        bl   @spawn_tile_sprite
-       jmp  move_other_sprites_4
+       jmp  move_other_sprites_5
 move_other_sprites_3:
+       ci   r3,bullet_sprite_list
+       jhe  move_other_sprites_4
 *      Enemy sprite out of bounds
        bl   @spawn_enemy_sprite
+       jmp  move_other_sprites_5
 move_other_sprites_4:
+*      Bullet out of bounds
+       clr  *r3
+move_other_sprites_5:
        ai   r3,sprite_size
        dec  r2
        jne  move_other_sprites_1
@@ -511,12 +533,16 @@ upload_sprites:
        mov  @player_pattern,r1
        mov  @joystick_input,r2
        jeq  upload_sprites_1
-       srl  r2,1
        movb @dir_sprite_table(r2),r2
        cb   r2,r1
        jeq  upload_sprites_1
-       sb   @mone,r1
-       andi r1,>9f0f
+       jlt  upload_sprites_6
+       ab   @two,r1
+       jmp  upload_sprites_7
+upload_sprites_6:
+       sb   @two,r1
+upload_sprites_7:
+;       andi r1,>9f0f
        mov  r1,@player_pattern
 upload_sprites_1:
        ai   r0,16+2
@@ -539,9 +565,9 @@ upload_sprites_1:
 upload_sprites_2:
        mov  *r3,r1
        jeq  upload_sprites_5
-       ci   r3,enemy_sprite_list
-       jl   upload_sprites_3
-       a    r8,r1
+       cb   r1,@ba0
+       jne  upload_sprites_3
+       a    r8,r1                      ; Animate enemy
 upload_sprites_3:
        mov   @sprite_y(r3),r4
        s    r6,r4
@@ -577,22 +603,22 @@ upload_sprites_5:
 *      Return
        b    *r15                       ; Pop return address and return
 dir_sprite_table:
-       byte >80                        ; 0 None
-       byte >90                        ; 1 Left
-       byte >80                        ; 2 Right
-       byte >80                        ; 3 Left + right (N/A)
-       byte >88                        ; 4 Up
-       byte >9c                        ; 5 Up + left
-       byte >94                        ; 6 Up + right
-       byte >94                        ; 7 Up + left + right (N/A)
-       byte >98                        ; 8 Down
-       byte >84                        ; 9 Down + left
-       byte >8c                        ; A Down + right
-       byte >8c                        ; B Down + left + right (N/A)
-       byte >88                        ; C Up + down (N/A)
-       byte >9c                        ; D Up + down + left (N/A)
-       byte >94                        ; E Up + down + right (N/A)
-       byte >94                        ; F Up + down + left + right (N/A)
+       byte >80                        ; 0 0000 None
+       byte >90                        ; 1 0001 Left
+       byte >80                        ; 2 0010 Right
+       byte >80                        ; 3 0011 Left + right (N/A) = right
+       byte >88                        ; 4 0100 Up
+       byte >9c                        ; 5 0101 Up + left
+       byte >94                        ; 6 0110 Up + right
+       byte >94                        ; 7 0111 Up + left + right (N/A) = up + right
+       byte >98                        ; 8 1000 Down
+       byte >84                        ; 9 1001 Down + left
+       byte >8c                        ; A 1010 Down + right
+       byte >8c                        ; B 1011 Down + left + right (N/A) = down + right
+       byte >88                        ; C 1100 Up + down (N/A) = up
+       byte >9c                        ; D 1101 Up + down + left (N/A) = up + left
+       byte >94                        ; E 1110 Up + down + right (N/A) = up + right
+       byte >94                        ; F 1111 Up + down + left + right (N/A) = up + right
 *// update_sprites
 
 *********************************************************************************
@@ -995,7 +1021,8 @@ add_bullet_sprite:
 add_bullet_sprite_1:
        mov  *r3,r0
        jeq  add_bullet_sprite_2
-       dec  r3
+       ai   r3,sprite_size
+       dec  r2
        jne  add_bullet_sprite_1
        jmp  add_bullet_sprite_3
 add_bullet_sprite_2:
@@ -1003,6 +1030,13 @@ add_bullet_sprite_2:
        mov  r0,*r3+
        mov  @player_x,*r3+
        mov  @player_y,*r3+
+       mov  @player_dx,*r3
+       a    @player_vx,*r3+
+       mov  @player_dy,*r3
+       a    @player_vy,*r3+
+       clr  *r3+
+       clr  *r3+
+       clr  *r3
 add_bullet_sprite_3:
        b    *r11
 *// add_bullet_sprite
@@ -1209,11 +1243,11 @@ read_joystick:
        li   r0,>0600                   ; Column 6, i.e joystick #1
        ldcr r0,3                       ; Select it
        li   r12,>0006                  ; Base CRU address for joystick 1
-       stcr r1,8                       ; Read 8 bites into MSB
+       stcr r1,5                       ; Read 5 bits into MSB
        inv  r1                         ; Make 1=pressed
-       andi r1,>ff00                   ; Clear LSB
+       andi r1,>1f00
        mov  r1,r0                      ; Copy
-       swpb r1                         ; Move to LSB
+       srl  r1,9                       ; Move to LSB
        mov  r1,@joystick_input         ; Save in variable
        b    *r11
 *// read_joystick
@@ -1355,8 +1389,8 @@ text_game_over:
        text "GAME OVER"
        byte 0
 
-one:   byte >01
-mone:  byte >ff
+ba0:   byte >a0
+two:   byte >02
 
 *********************************************************************
 *
