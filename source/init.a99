@@ -381,7 +381,7 @@ vregs:
        byte >39,>1c                    ; F18A unlock
        byte >1e,>04                    ; Set four sprites per line
        byte >39,>1c                    ; F18A lock
-       byte >00,>00                    ; Graphics II mode
+       byte >00,>00                    ; Graphics I mode
        byte >01,>a2                    ; 16K, display off, interrupt enabled, 16x16 sprites
        byte >02,nametb/>400            ; Name table
        byte >03,colrtb/>40             ; Color table
