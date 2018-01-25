@@ -281,34 +281,24 @@ set_vdp_tables:
 check_collisions:
        mov  r11,*r10+                  ; Push return address onto the stack
        mov  @coinc,r0
-       jeq  check_collisions_5
-       li   r3,sprite_list
+       jeq  check_collisions_3
        li   r2,1+n_sprites
-check_collisions_1:
-       mov  *r3,r0
-       jeq  check_collisions_4
-       mov  @player_x,r0
-       s    @sprite_x(r3),r0
-       abs  r0
-       ci   r0,>0040
-       jgt  check_collisions_4
-       mov  @player_y,r0
-       s    @sprite_y(r3),r0
-       abs  r0
-       ci   r0,>0040
-       jgt  check_collisions_4
+       li   r3,sprite_list
+       bl   @check_sprite_collision
+       jeq  check_collisions_3
 *      Collision
        ci   r3,tile_sprite_list
-       jhe  check_collisions_2
+       jhe  check_collisions_1
+*      Collision with target
        bl   @update_target_position
        a    @d100,@score
-       jmp  check_collisions_5
-check_collisions_2:
+       jmp  check_collisions_3
+check_collisions_1:
        ci   r3,enemy_sprite_list
-       jhe  check_collisions_3
-*      Bounce with balls
+       jhe  check_collisions_2
+*      Collision with tile
        mov  @sprite_count(r3),r0
-       jne  check_collisions_5
+       jne  check_collisions_3
        mov  @player_vx,r0
        mov  r0,@sprite_vx(r3)
        neg  r0
@@ -326,20 +316,49 @@ check_collisions_2:
        li   r0,32
        mov  r0,@sprite_count(r3)
        a    @d10,@score
-       jmp  check_collisions_5
-check_collisions_3:
+       jmp  check_collisions_3
+check_collisions_2:
        ci   r3,bullet_sprite_list
-       jhe  check_collisions_5
+       jhe  check_collisions_3
+*      Collision with enemy
        bl   @spawn_enemy_sprite
-       jmp  check_collisions_5
-check_collisions_4:
-       ai   r3,sprite_size
-       dec  r2
-       jne  check_collisions_1
 *      Return
-check_collisions_5:
+check_collisions_3:
        b    *r15                       ; Pop return address and return
 *// check_collisions
+
+*********************************************************************************
+*
+* Check sprite collision
+*
+* r2: Number of sprites to test
+* r3: First sprite to test
+*
+* On return r0 is -1 is there is a collision
+* EQ is reset, and r3 points to the collision sprite
+*
+check_sprite_collision:
+       mov  *r3,r0
+       jeq  check_sprite_collision_1
+       mov  @player_x,r0
+       s    @sprite_x(r3),r0
+       abs  r0
+       ci   r0,>0040
+       jgt  check_sprite_collision_1
+       mov  @player_y,r0
+       s    @sprite_y(r3),r0
+       abs  r0
+       ci   r0,>0040
+       jgt  check_sprite_collision_1
+       seto r0
+       b    *r11
+check_sprite_collision_1:
+       ai   r3,sprite_size
+       dec  r2
+       jne  check_sprite_collision
+       clr  r0
+       b    *r11
+*// check_sprite_collision
 
 *********************************************************************************
 *
