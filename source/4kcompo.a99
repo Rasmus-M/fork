@@ -122,8 +122,10 @@ joystick_input:
        equ  double_buffer_address+2
 fire:
        equ  joystick_input+2
-player_pattern:
+player_sprite:
        equ  fire+2
+player_pattern:                        ; Alias for player_sprite
+       equ  player_sprite
 player_x:                              ; smmmmmmmtttpppff s=sign, m=metatile, t=tile, p=pixel, f=fraction
        equ  player_pattern+2
 player_y:                              ; smmmmmmmtttpppff
@@ -139,9 +141,11 @@ player_ay:                             ; ppppppppssssssss
 player_dx:
        equ  player_ay+2
 player_dy:
-       equ  player_dx+2
-target_x:
+       equ  player_dx+2                ; Not used
+player_count:
        equ  player_dy+2
+target_x:
+       equ  player_count+2
 target_y:
        equ  target_x+2
 lives:
@@ -282,6 +286,7 @@ check_collisions:
        mov  r11,*r10+                  ; Push return address onto the stack
        mov  @coinc,r0
        jeq  check_collisions_3
+       li   r1,player_sprite
        li   r2,1+n_sprites
        li   r3,sprite_list
        bl   @check_sprite_collision
@@ -331,6 +336,7 @@ check_collisions_3:
 *
 * Check sprite collision
 *
+* r1: Source sprite
 * r2: Number of sprites to test
 * r3: First sprite to test
 *
@@ -338,24 +344,27 @@ check_collisions_3:
 * EQ is reset, and r3 points to the collision sprite
 *
 check_sprite_collision:
+       mov  @sprite_x(r1),r4
+       mov  @sprite_y(r1),r5
+check_sprite_collision_1:
        mov  *r3,r0
-       jeq  check_sprite_collision_1
-       mov  @player_x,r0
+       jeq  check_sprite_collision_2
+       mov  r4,r0
        s    @sprite_x(r3),r0
        abs  r0
        ci   r0,>0040
-       jgt  check_sprite_collision_1
-       mov  @player_y,r0
+       jgt  check_sprite_collision_2
+       mov  r5,r0
        s    @sprite_y(r3),r0
        abs  r0
        ci   r0,>0040
-       jgt  check_sprite_collision_1
+       jgt  check_sprite_collision_2
        seto r0
        b    *r11
-check_sprite_collision_1:
+check_sprite_collision_2:
        ai   r3,sprite_size
        dec  r2
-       jne  check_sprite_collision
+       jne  check_sprite_collision_1
        clr  r0
        b    *r11
 *// check_sprite_collision
