@@ -42,7 +42,7 @@ n_tile_sprites:
 n_enemy_sprites:
        equ  8
 n_bullet_sprites:
-       equ  2
+       equ  3
 n_sprites:
        equ  n_tile_sprites+n_enemy_sprites+n_bullet_sprites
 **
@@ -201,6 +201,7 @@ sprite_size:
        bl   @init
        bl   @init_game
 main_loop:
+       bl   @vsync
        bl   @main_actions
        inc  @frame_no
        jmp  main_loop
@@ -212,11 +213,10 @@ main_loop:
 *
 main_actions:
        mov  r11,*r10+                  ; Push return address onto the stack
-       bl   @vsync
        bl   @set_vdp_tables
        bl   @check_collisions
        bl   @user_input
-       bl   @move
+       bl   @move_player
        bl   @move_other_sprites
        bl   @upload_sprites
        bl   @calculate_nt_address
@@ -354,26 +354,22 @@ user_input:
 *      Up
        sla  r0,4
        jnc  user_input_1
-       li   r1,->0020
-       mov  r1,@player_ay
+       mov  @dminus,@player_ay
 user_input_1:
 *      Down
        sla  r0,1
        jnc  user_input_2
-       li   r1,>0020
-       mov  r1,@player_ay
+       mov  @dplus,@player_ay
 user_input_2:
 *      Right
        sla  r0,1
        jnc  user_input_3
-       li   r1,>0020
-       mov  r1,@player_ax
+       mov  @dplus,@player_ax
 user_input_3:
 *      Left
        sla  r0,1
        jnc  user_input_4
-       li   r1,->0020
-       mov  r1,@player_ax
+       mov  @dminus,@player_ax
 user_input_4:
 *      If any input, set direction
        mov  @joystick_input,r1
@@ -399,60 +395,64 @@ user_input_5:
        clr  @fire                      ; Set released
 user_input_6:
        b    *r15                       ; Pop return address and return
+dplus:
+       data >0020
+dminus:
+       data ->0020
 *// user_input
 
 *********************************************************************************
 *
 * Move player
 *
-move:
+move_player:
 *      X
        mov  @player_vx,r0                     ; Velocity
        mov  @player_ax,r1
-       jeq  move_1
+       jeq  move_player_1
 *      Accelerate
        a    r1,r0
-       jmp  move_3
+       jmp  move_player_3
 *      Decelerate
-move_1:
+move_player_1:
        mov  r0,r1                      ; Velocity
-       jlt  move_2
+       jlt  move_player_2
        ci   r1,>00c0
-       jgt  move_2
+       jgt  move_player_2
        clr  r0                         ; Stop
-       jmp  move_3
-move_2:
+       jmp  move_player_3
+move_player_2:
        sra  r1,6                       ; Divide velocity by 64
        s    r1,r0                      ; Subtract from velocity
-move_3:
+move_player_3:
        mov  r0,@player_vx                     ; Save velocity
        sra  r0,6                       ; Shift to LSB
        a    r0,@player_x                      ; Add to position
 *      Y
        mov  @player_vy,r0                     ; Velocity
        mov  @player_ay,r1
-       jeq  move_4
+       jeq  move_player_4
 *      Accelerate
        a    r1,r0
-       jmp  move_6
+       jmp  move_player_6
 *      Decelerate
-move_4:
+move_player_4:
        mov  r0,r1                      ; Velocity
-       jlt  move_5
+       jlt  move_player_5
        ci   r1,>00c0
-       jgt  move_5
+       jgt  move_player_5
        clr  r0                         ; Stop
-       jmp  move_6
-move_5:
+       jmp  move_player_6
+move_player_5:
        sra  r1,6                       ; Divide velocity by 64
        s    r1,r0                      ; Subtract from velocity
-move_6:
+move_player_6:
        mov  r0,@player_vy              ; Save velocity
        sra  r0,6                       ; Shift to LSB
        a    r0,@player_y               ; Add to position
 *      Return
        b    *r11
-*// move
+*// move_player
 
 *********************************************************************************
 *
@@ -477,14 +477,7 @@ move_other_sprites_1:
        ci   r1,>0400
        jgt  move_other_sprite_2
 *      Move
-       a    @sprite_ax(r3),@sprite_vx(r3)
-       a    @sprite_ay(r3),@sprite_vy(r3)
-       mov  @sprite_vx(r3),r0
-       sra  r0,6
-       a    r0,@sprite_x(r3)
-       mov  @sprite_vy(r3),r0
-       sra  r0,6
-       a    r0,@sprite_y(r3)
+       bl   @move_sprite
 *      Check sprite counter for tiles
        ci   r3,enemy_sprite_list
        jhe  move_other_sprites_5
@@ -882,36 +875,21 @@ display_level:
        b    *r15                       ; Pop return address and return
 *// display_level
 
-;*********************************************************************************
-;*
-;* Allocate tile sprite
-;*
-;* r0: pattern and color
-;*
-;* On return r3 contain the address of the allocated sprite
-;* or 0 if allocation failed.
-;*
-;alloc_tile_sprite:
-;       li   r2,n_tile_sprites
-;       li   r3,tile_sprite_list
-;       jmp  alloc_sprite_1
-;alloc_enemy_sprite:
-;       li   r2,n_enemy_sprites
-;       li   r3,enemy_sprite_list
-;alloc_sprite_1:
-;       mov  *r3,r1
-;       jne  alloc_sprite_2
-;       mov  r0,*r3
-;       jmp  alloc_sprite_3
-;alloc_sprite_2:
-;       ai   r3,sprite_size
-;       dec  r2
-;       jne  alloc_sprite_1
-;       clr  r3
-;*      Return
-;alloc_sprite_3:
-;       b    *r11
-;*// alloc_tile_sprite
+*********************************************************************************
+*
+* Move sprite
+*
+move_sprite:
+       a    @sprite_ax(r3),@sprite_vx(r3)
+       a    @sprite_ay(r3),@sprite_vy(r3)
+       mov  @sprite_vx(r3),r0
+       sra  r0,6
+       a    r0,@sprite_x(r3)
+       mov  @sprite_vy(r3),r0
+       sra  r0,6
+       a    r0,@sprite_y(r3)
+       b    *r11
+*// move_sprite
 
 *********************************************************************************
 *
@@ -1016,6 +994,7 @@ spawn_sprite_3:
 * Add bullet sprite
 *
 add_bullet_sprite:
+       mov  r11,*r10+                  ; Push return address onto the stack
        li   r2,n_bullet_sprites
        li   r3,bullet_sprite_list
 add_bullet_sprite_1:
@@ -1026,7 +1005,7 @@ add_bullet_sprite_1:
        jne  add_bullet_sprite_1
        jmp  add_bullet_sprite_3
 add_bullet_sprite_2:
-       li   r0,>cc07
+       li   r0,>cc0e
        mov  r0,*r3+
        mov  @player_x,*r3+
        mov  @player_y,*r3+
@@ -1034,11 +1013,14 @@ add_bullet_sprite_2:
        a    @player_vx,*r3+
        mov  @player_dy,*r3
        a    @player_vy,*r3+
-       clr  *r3+
-       clr  *r3+
-       clr  *r3
+       clr  *r3+                       ; ax
+       clr  *r3+                       ; ay
+       clr  *r3+                       ; count
+       ai   r3,-sprite_size
+       bl   @move_sprite
 add_bullet_sprite_3:
-       b    *r11
+*      Return
+       b    *r15
 *// add_bullet_sprite
 
 *********************************************************************************
@@ -1056,6 +1038,7 @@ init_game:
        mov  *r0+,@player_pattern
        mov  *r0+,@player_x
        mov  *r0+,@player_y
+       mov  *r0,@player_dx
        seto @disp_score
        li   r0,3
        mov  r0,@lives
@@ -1097,7 +1080,7 @@ init_game_3:
 *      Return
        b    *r15                       ; Pop return address and return
 init_player_data:
-       data >8008,start_x,start_y
+       data >8008,start_x,start_y,>0800
 *// init_game
 
 *********************************************************************
