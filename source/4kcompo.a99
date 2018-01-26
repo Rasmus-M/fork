@@ -217,13 +217,23 @@ sprite_size:
        bl   @init
 new_game:
        bl   @init_game
+       li   r0,128+9
+       li   r1,text_fire_to_start
+       bl   @display_text
+       bl   @wait_fire
 main_loop:
        bl   @vsync
        bl   @main_actions
        mov  @lives,r0
-       jeq  new_game
+       jeq  game_over
        inc  @frame_no
        jmp  main_loop
+game_over:
+       li   r0,128+11
+       li   r1,text_game_over
+       bl   @display_text
+       bl   @wait_fire
+       jmp  new_game
 *// main
 
 *********************************************************************
@@ -1115,6 +1125,7 @@ player_hit_1:
 *
 init_game:
        mov  r11,*r10+                  ; Push return address onto the stack
+       bl   @mute_sound
        li   r0,pad_init_start
        clr  *r0
        li   r1,pad_init_start+2
@@ -1159,6 +1170,7 @@ init_game_3:
        bl   @update_target_position
        li   r14,display_lives
        bl   @display_both_name_tables
+       bl   @main_actions
        bl   @main_actions
 *      Disable blanking
        li   r0,>01e2
@@ -1311,6 +1323,9 @@ wait_fire_1:
        bl   @read_joystick
        tb   0
        jeq  wait_fire_1
+wait_fire_2:
+       tb   0
+       jne  wait_fire_2
 *      Return
        b    *r15                       ; Pop return address and return
 *// wait_fire
