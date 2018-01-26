@@ -348,6 +348,9 @@ check_collisions_1:
        li   r0,32
        mov  r0,@sprite_count(r3)
        a    @d10,@score
+       li   r0,boing_sound
+       li   r1,1
+       bl   @play_sound
        jmp  check_collisions_6
 check_collisions_2:
        ci   r3,bullet_sprite_list
@@ -1093,6 +1096,9 @@ add_bullet_sprite_2:
        clr  *r3+                       ; count
        ai   r3,-sprite_size            ; To start of struct
        bl   @move_sprite               ; Move away from player
+       li   r0,shot_sound
+       clr  r1
+       bl   @play_sound
 *      Return
 add_bullet_sprite_3:
        b    *r15

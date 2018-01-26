@@ -66,3 +66,13 @@ sound_player_4:
 sound_player_5:
        b    *r11
 *// sound_player
+
+shot_sound:
+       BYTE >02,>E4,>F0,>02                                  * W0
+       BYTE >02,>E4,>F8,>02                                  * W0
+       BYTE >02,>E4,>FF,>00                                  * W0
+boing_sound:
+       BYTE >03,>AC,>1A,>B0,>02                              * C22
+       BYTE >03,>AD,>11,>B6,>02                              * G22
+       BYTE >03,>A6,>0D,>BA,>02                              * C32
+       BYTE >01,>BF,>00
