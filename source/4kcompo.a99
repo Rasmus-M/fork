@@ -345,6 +345,7 @@ check_collisions_4:
        jmp  check_collisions_6
 *      Collision with enemy
 check_collisions_5:
+       a    @d10,@score
        bl   @spawn_enemy_sprite
 *      Return
 check_collisions_6:
@@ -792,22 +793,23 @@ update_target_position:
 *      Reset time
        li   r0,>6400
        mov  r0,@time_left
-*      Next level
-       inc  @level
 *      Colors
        li   r0,colrtb
        mov  @level,r1
-       swpb r1
-       ori  r1,>f000
+       andi r1,7
+       movb @level_colors(r1),r1
        li   r2,16
        bl   @vsmw
+*      Next level
+       inc  @level
 *      Display level
        li   r14,display_level
        bl   @display_both_name_tables
 *      Return
        b    *r15                       ; Pop return address and return
+level_colors:
+       byte >f1,>1d,>f4,>1a,>f6,>15,>fc,>1e
 *// update_target_position
-
 
 *********************************************************************************
 *
@@ -1278,6 +1280,7 @@ read_joystick:
 rand:
        li   r0,28643                   ; A prime number to multiply by
        mpy  @rand_no,r0
+       mov  r1,r0
        ai   r0,31873                   ; Add a prime number
        src  r0,7                       ; Shift to break odd/even pattern
        mov  r0,@rand_no
