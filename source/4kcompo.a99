@@ -285,9 +285,10 @@ set_vdp_tables:
 check_collisions:
        mov  r11,*r10+                  ; Push return address onto the stack
        mov  @coinc,r0
-       jeq  check_collisions_3
+       jeq  check_collisions_6
+*      Collisions between player and target/tiles/enemies
        li   r1,player_sprite
-       li   r2,1+n_sprites
+       li   r2,1+n_tile_sprites+n_enemy_sprites
        li   r3,sprite_list
        bl   @check_sprite_collision
        jeq  check_collisions_3
@@ -297,13 +298,13 @@ check_collisions:
 *      Collision with target
        bl   @update_target_position
        a    @d100,@score
-       jmp  check_collisions_3
+       jmp  check_collisions_6
 check_collisions_1:
        ci   r3,enemy_sprite_list
        jhe  check_collisions_2
 *      Collision with tile
        mov  @sprite_count(r3),r0
-       jne  check_collisions_3
+       jne  check_collisions_6
        mov  @player_vx,r0
        mov  r0,@sprite_vx(r3)
        neg  r0
@@ -321,14 +322,32 @@ check_collisions_1:
        li   r0,32
        mov  r0,@sprite_count(r3)
        a    @d10,@score
-       jmp  check_collisions_3
+       jmp  check_collisions_6
 check_collisions_2:
        ci   r3,bullet_sprite_list
-       jhe  check_collisions_3
+       jhe  check_collisions_6
 *      Collision with enemy
        bl   @spawn_enemy_sprite
-*      Return
+       jmp  check_collisions_6
+*      Collisions between bullets and enemies
 check_collisions_3:
+       li   r6,n_bullet_sprites
+       li   r7,bullet_sprite_list
+check_collisions_4:
+       mov  r7,r1
+       li   r2,n_enemy_sprites
+       li   r3,enemy_sprite_list
+       bl   @check_sprite_collision
+       jne  check_collisions_5
+       ai   r7,sprite_size
+       dec  r6
+       jne  check_collisions_4
+       jmp  check_collisions_6
+*      Collision with enemy
+check_collisions_5:
+       bl   @spawn_enemy_sprite
+*      Return
+check_collisions_6:
        b    *r15                       ; Pop return address and return
 *// check_collisions
 
@@ -983,7 +1002,7 @@ spawn_sprite_1:
        ori  r5,>0060                   ; Center on meta tile
 *      Check for other sprite at same position
        li   r1,sprite_list
-       li   r0,1+n_sprites
+       li   r0,1+n_tile_sprites+n_bullet_sprites
 spawn_sprite_2:
        c    r4,@sprite_x(r1)
        jne  spawn_sprite_3
