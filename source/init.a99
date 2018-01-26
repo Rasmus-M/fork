@@ -241,7 +241,7 @@ init_gfx_3:
        clr  *r13
        ai   r1,>0010
        dec  r2
-       jne  init_gfx_2
+       jne  init_gfx_3
 *      Player
        li   r1,center_y*256+center_x
        movb r1,*r13

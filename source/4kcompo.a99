@@ -138,36 +138,48 @@ player_ax:                             ; ppppppppssssssss
        equ  player_vy+2
 player_ay:                             ; ppppppppssssssss
        equ  player_ax+2
-player_dx:
+player_count:                          ; Counter
        equ  player_ay+2
-player_dy:
-       equ  player_dx+2                ; Not used
-player_count:
-       equ  player_dy+2
-target_x:
+player_dx:                             ; Direction x
        equ  player_count+2
-target_y:
+player_dy:                             ; Direction y
+       equ  player_dx+2
+target_x:                              ; Target x
+       equ  player_dy+2
+target_y:                              ; Target y
        equ  target_x+2
-lives:
+lives:                                 ; Number of lives
        equ  target_y+2
-level:
+level:                                 ; Level number
        equ  lives+2
-score:
+score:                                 ; Score
        equ  level+2
-disp_score:
+disp_score:                            ; Currently displayed score
        equ  score+2
-time_left:
+time_left:                             ; Time left to finish level
        equ  disp_score+2
-buffer:
-       equ  time_left+2                ; 32 bytes buffer
-copy_loop:
+sndad0:                                ; Sound address channel 0
+       equ  time_left+2
+sndad1:                                ; Sound address channel 1
+       equ  sndad0+2
+sndct0:                                ; Sound counter 0
+       equ  sndad1+2
+sndct1:                                ; Sound counter 1
+       equ  sndct0+2
+sndrp0:                                ; Sound repeat counter 0
+       equ  sndct1+2
+sndrp1:                                ; Sound repeat counter 1
+       equ  sndrp0+2
+buffer:                                ; 32 bytes buffer
+       equ  sndrp1+2
+copy_loop:                             ; Code in PAD
        equ  buffer+32
 pad_max:
        equ  copy_loop+24
 pad_init_start:
        equ  frame_no
 pad_init_end:
-       equ  time_left
+       equ  sndrp1
 
 * Sprite structure
 sprite_pattern:                        ; If 0 then not allocated
@@ -203,10 +215,13 @@ sprite_size:
        li   r13,vdpwd                  ; Do not change
        li   r15,main_return
        bl   @init
+new_game:
        bl   @init_game
 main_loop:
        bl   @vsync
        bl   @main_actions
+       mov  @lives,r0
+       jeq  new_game
        inc  @frame_no
        jmp  main_loop
 *// main
@@ -228,6 +243,7 @@ main_actions:
        bl   @display_position
        bl   @display_time_left
        bl   @display_score
+       bl   @sound_player
 main_return:
        dect r10                        ; Pop return address off the stack
        mov  *r10,r11
@@ -328,6 +344,7 @@ check_collisions_2:
        jhe  check_collisions_6
 *      Collision with enemy
        bl   @spawn_enemy_sprite
+       bl   @player_hit
        jmp  check_collisions_6
 *      Collisions between bullets and enemies
 check_collisions_3:
@@ -454,6 +471,7 @@ dminus:
 * Move player
 *
 move_player:
+       mov  r11,*r10+                  ; Push return address onto the stack
        li   r2,2                       ; Two coordinates (x and y)
        li   r3,player_sprite
 *      Move in x then y
@@ -483,8 +501,20 @@ move_player_3:
        inct r3
        dec  r2
        jne  move_player_0
+*      Blaking when hit
+       mov  @player_count,r0
+       jeq  move_player_5
+       dec  r0
+       jgt  move_player_4
+       li   r0,>01e2
+       bl   @vwtr
+       li   r0,>0700
+       bl   @vwtr
+move_player_4:
+       mov  r0,@player_count
 *      Return
-       b    *r11
+move_player_5:
+       b    *r15
 *// move_player
 
 *********************************************************************************
@@ -1060,6 +1090,27 @@ add_bullet_sprite_3:
 
 *********************************************************************************
 *
+* Player hit
+*
+player_hit:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       dec  @lives
+       li   r14,display_lives
+       bl   @display_both_name_tables
+       mov  @lives,r0
+       jeq  player_hit_1
+       li   r0,>01a2
+       bl   @vwtr
+       li   r0,>070f
+       bl   @vwtr
+       mov  @d10,@player_count
+*      Return
+player_hit_1:
+       b    *r15                       ; Pop return address and return
+*// player_hit
+
+*********************************************************************************
+*
 * Initialize game
 *
 init_game:
@@ -1250,6 +1301,20 @@ display_text_4:
 *// display_text
 
 
+*********************************************************************************
+*
+* Wait for fire
+*
+wait_fire:
+       mov  r11,*r10+                  ; Push return address onto the stack
+wait_fire_1:
+       bl   @read_joystick
+       tb   0
+       jeq  wait_fire_1
+*      Return
+       b    *r15                       ; Pop return address and return
+*// wait_fire
+
 *********************************************************************
 *
 * Read joystick #1 using CRU
@@ -1393,6 +1458,12 @@ vmbr_1:
        jne  vmbr_1                     ; Check if finished
        b    *r11
 *// vmbr
+
+*********************************************************************
+*
+* Code that should reside after initilization
+*
+       copy "sound.a99"
 
 *********************************************************************
 *
