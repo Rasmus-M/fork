@@ -247,7 +247,7 @@ main_actions:
        bl   @calculate_nt_address
        bl   @update_name_table
        bl   @display_position
-       bl   @display_time_left
+       bl   @update_and_display_time_left
        bl   @display_score
        bl   @sound_player
 main_return:
@@ -318,9 +318,11 @@ check_collisions:
        ci   r3,tile_sprite_list
        jhe  check_collisions_1
 *      Collision with target
-       bl   @update_target_position
-       a    @d100,@score
+       mov  @time_left,r0
+       srl  r0,4
+       a    r0,@score
        bl   @play_boing
+       bl   @next_level
        jmp  check_collisions_6
 check_collisions_1:
        ci   r3,enemy_sprite_list
@@ -757,30 +759,25 @@ copy_loop_2
 
 *********************************************************************************
 *
-* Display time left
+* Update and display time left
 *
-display_time_left:
+update_and_display_time_left:
        mov  r11,*r10+                  ; Push return address onto the stack
        mov  @time_left,r0
-       jeq  display_time_left_1
+       jeq  update_and_display_time_left_1
        ai   r0,-8
        mov  r0,@time_left
        andi r0,>00ff
-       jne  display_time_left_1
-*      Name table 1
-       li   r0,23*32+5+nametb
-       bl   @vwad
-       mov  @time_left,r1
-       bl   @display_unsigned_byte
-*      Name table 2
-       li   r0,23*32+5+namet1
-       bl   @vwad
-       mov  @time_left,r1
-       bl   @display_unsigned_byte
+       jne  update_and_display_time_left_1
+       li   r14,display_time_left
+       bl   @display_both_name_tables
+       mov  @time_left,r0
+       jne  update_and_display_time_left_1
+       bl   @player_hit
 *      Return
-display_time_left_1:
+update_and_display_time_left_1:
        b    *r15                       ; Pop return address and return
-*// display_time_left
+*// update_and_display_time_left
 
 *********************************************************************************
 *
@@ -806,10 +803,29 @@ display_position:
 
 *********************************************************************************
 *
-* Update target position
+* Advance to next level
 *
-update_target_position:
+next_level:
        mov  r11,*r10+                  ; Push return address onto the stack
+*      Init sprites
+       li   r8,n_enemy_sprites
+       li   r3,enemy_sprite_list
+next_level_1:
+       bl   @rand
+       andi r0,>000f
+       ori  r0,>a002
+       mov  r0,*r3
+       bl   @spawn_enemy_sprite
+       ai   r3,sprite_size
+       dec  r8
+       jne  next_level_1
+       li   r8,n_bullet_sprites
+next_level_2:
+       clr  *r3
+       ai   r3,sprite_size
+       dec  r8
+       jne  next_level_2
+*      Update target position
 *      Target x
        bl   @rand
        andi r0,>ff00
@@ -847,7 +863,7 @@ update_target_position:
        b    *r15                       ; Pop return address and return
 level_colors:
        byte >f1,>1d,>f4,>1a,>f6,>15,>fc,>1e
-*// update_target_position
+*// next_level
 
 *********************************************************************************
 *
@@ -866,6 +882,21 @@ display_both_name_tables:
 *      Return
        b    *r15                       ; Pop return address and return
 *// display_both_name_tables
+
+*********************************************************************************
+*
+* Display time left
+*
+display_time_left:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       mov  @double_buffer_address,r0
+       ai   r0,23*32+5
+       bl   @vwad
+       mov  @time_left,r1
+       bl   @display_unsigned_byte
+*      Return
+       b    *r15                       ; Pop return address and return
+*// display_time_left
 
 *********************************************************************************
 *
@@ -1139,37 +1170,21 @@ init_game:
        seto @disp_score
        li   r0,3
        mov  r0,@lives
+       li   r14,display_lives
+       bl   @display_both_name_tables
 *      Init sprites
        li   r8,n_tile_sprites
        li   r3,tile_sprite_list
-       li   r14,sprite_size
 init_game_1:
        li   r0,>c405
        mov  r0,*r3
        bl   @spawn_tile_sprite
-       a    r14,r3
+       ai   r3,sprite_size
        dec  r8
        jne  init_game_1
-       li   r8,n_enemy_sprites
-init_game_2:
-       bl   @rand
-       andi r0,>000f
-       ori  r0,>a002
-       mov  r0,*r3
-       bl   @spawn_enemy_sprite
-       a    r14,r3
-       dec  r8
-       jne  init_game_2
-       li   r8,n_bullet_sprites
-init_game_3:
-       clr  *r3
-       a    r14,r3
-       dec  r8
-       jne  init_game_3
+*      Next level
+       bl   @next_level
 *      Init display
-       bl   @update_target_position
-       li   r14,display_lives
-       bl   @display_both_name_tables
        bl   @main_actions
        bl   @main_actions
 *      Disable blanking
