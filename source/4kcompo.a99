@@ -158,28 +158,24 @@ disp_score:                            ; Currently displayed score
        equ  score+2
 time_left:                             ; Time left to finish level
        equ  disp_score+2
-sndad0:                                ; Sound address channel 0
+snd_address_0:                         ; Sound address channel 0
        equ  time_left+2
-sndad1:                                ; Sound address channel 1
-       equ  sndad0+2
-sndct0:                                ; Sound counter 0
-       equ  sndad1+2
-sndct1:                                ; Sound counter 1
-       equ  sndct0+2
-sndrp0:                                ; Sound repeat counter 0
-       equ  sndct1+2
-sndrp1:                                ; Sound repeat counter 1
-       equ  sndrp0+2
+snd_address_1:                         ; Sound address channel 1
+       equ  snd_address_0+2
+snd_counter_0:                         ; Sound counter 0
+       equ  snd_address_1+2
+snd_counter_1:                         ; Sound counter 1
+       equ  snd_counter_0+2
 buffer:                                ; 32 bytes buffer
-       equ  sndrp1+2
+       equ  snd_counter_1+2
 copy_loop:                             ; Code in PAD
        equ  buffer+32
-pad_max:
+pad_max:                               ; Next availble PAD address
        equ  copy_loop+24
-pad_init_start:
+pad_init_start:                        ; Clear from here
        equ  frame_no
-pad_init_end:
-       equ  sndrp1
+pad_init_end:                          ; Clear to here
+       equ  snd_counter_1
 
 * Sprite structure
 sprite_pattern:                        ; If 0 then not allocated
@@ -324,6 +320,7 @@ check_collisions:
 *      Collision with target
        bl   @update_target_position
        a    @d100,@score
+       bl   @play_boing
        jmp  check_collisions_6
 check_collisions_1:
        ci   r3,enemy_sprite_list
@@ -348,9 +345,7 @@ check_collisions_1:
        li   r0,32
        mov  r0,@sprite_count(r3)
        a    @d10,@score
-       li   r0,boing_sound
-       li   r1,1
-       bl   @play_sound
+       bl   @play_boing
        jmp  check_collisions_6
 check_collisions_2:
        ci   r3,bullet_sprite_list
@@ -1096,9 +1091,7 @@ add_bullet_sprite_2:
        clr  *r3+                       ; count
        ai   r3,-sprite_size            ; To start of struct
        bl   @move_sprite               ; Move away from player
-       li   r0,shot_sound
-       clr  r1
-       bl   @play_sound
+       bl   @play_shot
 *      Return
 add_bullet_sprite_3:
        b    *r15
@@ -1120,6 +1113,7 @@ player_hit:
        li   r0,>070f
        bl   @vwtr
        mov  @d10,@player_count
+       bl   @play_shot
 *      Return
 player_hit_1:
        b    *r15                       ; Pop return address and return
