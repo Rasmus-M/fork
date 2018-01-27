@@ -144,12 +144,8 @@ player_dx:                             ; Direction x
        equ  player_count+2
 player_dy:                             ; Direction y
        equ  player_dx+2
-target_x:                              ; Target x
-       equ  player_dy+2
-target_y:                              ; Target y
-       equ  target_x+2
 lives:                                 ; Number of lives
-       equ  target_y+2
+       equ  player_dy+2
 level:                                 ; Level number
        equ  lives+2
 score:                                 ; Score
@@ -373,6 +369,7 @@ check_collisions_4:
 *      Collision with enemy
 check_collisions_5:
        a    @d10,@score
+       bl   @play_boing
        bl   @spawn_enemy_sprite
 *      Return
 check_collisions_6:
@@ -803,66 +800,6 @@ display_position:
 
 *********************************************************************************
 *
-* Advance to next level
-*
-next_level:
-       mov  r11,*r10+                  ; Push return address onto the stack
-*      Init sprites
-       li   r8,n_enemy_sprites
-       li   r3,enemy_sprite_list
-next_level_1:
-       bl   @spawn_enemy_sprite
-       ai   r3,sprite_size
-       dec  r8
-       jne  next_level_1
-       li   r8,n_bullet_sprites
-next_level_2:
-       clr  *r3
-       ai   r3,sprite_size
-       dec  r8
-       jne  next_level_2
-*      Update target position
-*      Target x
-       bl   @rand
-       andi r0,>ff00
-       ori  r0,>0060
-       mov  r0,@target_x
-       mov  r0,@sprite_list+sprite_x
-*      Target y
-       bl   @rand
-       andi r0,>ff00
-       ori  r0,>0060
-       mov  r0,@target_y
-       mov  r0,@sprite_list+sprite_y
-*      Target pattern and color
-       li   r0,>c00a
-       mov  r0,@sprite_list+sprite_pattern
-*      Display position
-       li   r14,display_target_position
-       bl   @display_both_name_tables
-*      Reset time
-       li   r0,>6400
-       mov  r0,@time_left
-*      Colors
-       li   r0,colrtb
-       mov  @level,r1
-       andi r1,7
-       movb @level_colors(r1),r1
-       li   r2,16
-       bl   @vsmw
-*      Next level
-       inc  @level
-*      Display level
-       li   r14,display_level
-       bl   @display_both_name_tables
-*      Return
-       b    *r15                       ; Pop return address and return
-level_colors:
-       byte >f1,>1d,>f4,>1a,>f6,>15,>fc,>1e
-*// next_level
-
-*********************************************************************************
-*
 * Display to both name tables
 *
 * r14: Display routine to execute
@@ -904,13 +841,13 @@ display_target_position:
        mov  @double_buffer_address,r0
        ai   r0,22*32+21
        bl   @vwad
-       mov  @target_x,r1
+       mov  @sprite_list+sprite_x,r1
        bl   @display_byte
 *      Target y
        mov  @double_buffer_address,r0
        ai   r0,22*32+28
        bl   @vwad
-       mov  @target_y,r1
+       mov  @sprite_list+sprite_y,r1
        bl   @display_byte
 *      Return
        b    *r15                       ; Pop return address and return
@@ -1054,14 +991,7 @@ spawn_sprite_1:
        ai   r0,-8                      ; -8 - 7 meta tiles
        mov  r0,r5
 *      Square of distance
-       mov  r4,r0
-       abs  r0
-       mpy r0,r0
-       mov  r1,r9
-       mov  r5,r0
-       abs  r0
-       mpy  r0,r0
-       a    r1,r9
+       bl   @dist_square
        ci   r9,9                       ; dist^2 < 9 <=> dist < 3
        jlt  spawn_sprite_1             ; Try again if too close
 *      Finalize
@@ -1154,6 +1084,80 @@ player_hit_1:
 
 *********************************************************************************
 *
+* Advance to next level
+*
+next_level:
+       mov  r11,*r10+                  ; Push return address onto the stack
+*      Init sprites
+       li   r8,n_enemy_sprites
+       li   r3,enemy_sprite_list
+next_level_1:
+       bl   @spawn_enemy_sprite
+       ai   r3,sprite_size
+       dec  r8
+       jne  next_level_1
+       li   r8,n_bullet_sprites
+next_level_2:
+       clr  *r3
+       ai   r3,sprite_size
+       dec  r8
+       jne  next_level_2
+*      Update target position
+next_level_3:
+       bl   @rand
+       sra  r0,8
+       mov  r0,r4
+       bl   @rand
+       sra  r0,8
+       mov  r0,r5
+       bl   @dist_square
+       li   r1,8
+       mov  @level,r0
+       inc  r0
+       sla  r1,0
+       c    r9,r1
+       jgt next_level_3
+*      Target x
+       sla  r4,8
+       a    @player_x,r4
+       andi r4,>ff00
+       ori  r4,>0060
+       mov  r4,@sprite_list+sprite_x
+*      Target y
+       sla  r5,8
+       a    @player_y,r5
+       andi r5,>ff00
+       ori  r5,>0060
+       mov  r5,@sprite_list+sprite_y
+*      Target pattern and color
+       li   r0,>c00a
+       mov  r0,@sprite_list+sprite_pattern
+*      Display position
+       li   r14,display_target_position
+       bl   @display_both_name_tables
+*      Reset time
+       li   r0,>6400
+       mov  r0,@time_left
+*      Colors
+       li   r0,colrtb
+       mov  @level,r1
+       andi r1,7
+       movb @level_colors(r1),r1
+       li   r2,16
+       bl   @vsmw
+*      Next level
+       inc  @level
+*      Display level
+       li   r14,display_level
+       bl   @display_both_name_tables
+*      Return
+       b    *r15                       ; Pop return address and return
+level_colors:
+       byte >f1,>1d,>f4,>1a,>f6,>15,>fc,>1e
+*// next_level
+
+*********************************************************************************
+*
 * Initialize game
 *
 init_game:
@@ -1195,6 +1199,25 @@ init_game_1:
 init_player_data:
        data >8008,start_x,start_y,>0800
 *// init_game
+
+*********************************************************************
+*
+* Square of distance
+* Calculates r9=abs(r4)^2+abs(r5)
+*
+* Modifies r0,r1
+*
+dist_square:
+       mov  r4,r0
+       abs  r0
+       mpy r0,r0
+       mov  r1,r9
+       mov  r5,r0
+       abs  r0
+       mpy  r0,r0
+       a    r1,r9
+       b    *r11
+*// dist_square
 
 *********************************************************************
 *
@@ -1533,10 +1556,8 @@ text_line_2:
        copy "graphics.a99"
        copy "sprite-patterns.a99"
 
-map_rows:
-       equ  text_line_1
 sprite_list:
-       equ  map_rows+512
+       equ  one_time_code
 tile_sprite_list:
        equ  sprite_list+sprite_size
 enemy_sprite_list:
@@ -1545,5 +1566,7 @@ bullet_sprite_list:
        equ  sprite_size*n_enemy_sprites+enemy_sprite_list
 sprite_list_end:
        equ  sprite_size*n_bullet_sprites+bullet_sprite_list
+map_rows:
+       equ  sprite_list_end
 
 *********************************************************************
