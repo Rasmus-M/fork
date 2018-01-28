@@ -269,14 +269,19 @@ main_return:
 * Wait for vertical retrace (CRU)
 *
 vsync:
-       movb @vdpsta,r1                 ; Clear interrupt if already set
        clr  r12
+       li   r2,1
+       movb @vdpsta,r1                 ; Clear interrupt if already set
+       jlt  vsync_1
+       inc  r2                         ; If no interrupt wait one more frame
 vsync_1:
        tb   2                          ; Test CRU bit for VDP interrupt
        jeq  vsync_1
        socb @vdpsta,r1
        andi r1,>2000
        mov  r1,@coinc                  ; Store collision bit
+       dec  r2
+       jne  vsync_1
        b    *r11
 *// vsync
 
@@ -1120,18 +1125,24 @@ next_level:
        li   r8,n_enemy_sprites
        li   r3,enemy_sprite_list
 next_level_1:
+       c    r8,@level
+       jgt  next_level_2
        bl   @spawn_enemy_sprite
+       jmp  next_level_3
+next_level_2:
+       clr  *r3
+next_level_3:
        ai   r3,sprite_size
        dec  r8
        jne  next_level_1
        li   r8,n_bullet_sprites
-next_level_2:
+next_level_4:
        clr  *r3
        ai   r3,sprite_size
        dec  r8
-       jne  next_level_2
+       jne  next_level_4
 *      Update target position
-next_level_3:
+next_level_5:
        bl   @rand
        sra  r0,8
        mov  r0,r4
@@ -1144,7 +1155,7 @@ next_level_3:
        inc  r0
        sla  r1,0
        c    r9,r1
-       jgt next_level_3
+       jgt next_level_5
 *      Target x
        sla  r4,8
        a    @player_x,r4
