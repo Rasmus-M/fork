@@ -783,14 +783,17 @@ update_and_display_time_left:
        ai   r0,-8
        mov  r0,@time_left
        andi r0,>00ff
-       jne  update_and_display_time_left_1
+       jne  update_and_display_time_left_2
        li   r14,display_time_left
        bl   @display_both_name_tables
-       mov  @time_left,r0
-       jne  update_and_display_time_left_1
+       jmp  update_and_display_time_left_2
+*      Time's up
+update_and_display_time_left_1:
+       mov  @player_count,r0
+       jgt  update_and_display_time_left_2
        bl   @player_hit
 *      Return
-update_and_display_time_left_1:
+update_and_display_time_left_2:
        b    *r15                       ; Pop return address and return
 *// update_and_display_time_left
 
