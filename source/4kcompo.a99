@@ -195,6 +195,18 @@ sprite_count:
 sprite_size:
        equ  16
 
+player_pat_col:
+       equ  >8008
+enemy_pat_col:
+       equ  >a002
+target_pat_col:
+       equ  >c00a
+ball_pat_col:
+       equ  >c405
+life_pat_col:
+       equ  >c80c
+bullet_pat_col:
+       equ  >cc0e
 
 ********************************************************************************
 *
@@ -344,6 +356,12 @@ check_collisions_1:
        mov  r0,@sprite_count(r3)
        a    @d10,@score
        bl   @play_boing
+       mov  *r3,r0
+       ci   r0,life_pat_col
+       jne  check_collisions_6
+       inc  @lives
+       li   r14,display_lives
+       bl   @display_both_name_tables
        jmp  check_collisions_6
 check_collisions_2:
        ci   r3,bullet_sprite_list
@@ -937,7 +955,7 @@ spawn_enemy_sprite:
        mov  r11,*r10+                  ; Push return address onto the stack
        bl   @rand
        andi r0,>000f
-       ori  r0,>a002
+       ori  r0,enemy_pat_col
        mov  r0,*r3
        bl   @rand
        sra  r0,7
@@ -962,7 +980,14 @@ spawn_enemy_sprite:
 *
 spawn_tile_sprite:
        mov  r11,*r10+                  ; Push return address onto the stack
-       li   r0,>c405
+       bl   @rand
+       ci   r0,>f800
+       jhe  spawn_tile_sprite_1
+       li   r0,ball_pat_col
+       jmp  spawn_tile_sprite_2
+spawn_tile_sprite_1:
+       li   r0,life_pat_col
+spawn_tile_sprite_2:
        mov  r0,*r3
        clr  @sprite_vx(r3)
        clr  @sprite_vy(r3)
@@ -1040,7 +1065,7 @@ add_bullet_sprite_1:
        jne  add_bullet_sprite_1
        jmp  add_bullet_sprite_3
 add_bullet_sprite_2:
-       li   r0,>cc0e
+       li   r0,bullet_pat_col
        mov  r0,*r3+
        li   r1,player_x
        mov  *r1+,*r3+                  ; x
@@ -1130,7 +1155,7 @@ next_level_3:
        ori  r5,>0060
        mov  r5,@sprite_list+sprite_y
 *      Target pattern and color
-       li   r0,>c00a
+       li   r0,target_pat_col
        mov  r0,@sprite_list+sprite_pattern
 *      Display position
        li   r14,display_target_position
@@ -1197,7 +1222,7 @@ init_game_1:
 *      Return
        b    *r15                       ; Pop return address and return
 init_player_data:
-       data >8008,start_x,start_y,>0800
+       data player_pat_col,start_x,start_y,>0800
 *// init_game
 
 *********************************************************************
