@@ -989,7 +989,7 @@ spawn_enemy_sprite:
 spawn_tile_sprite:
        mov  r11,*r10+                  ; Push return address onto the stack
        bl   @rand
-       ci   r0,>f800
+       ci   r0,>fc00
        jhe  spawn_tile_sprite_1
        li   r0,ball_pat_col
        jmp  spawn_tile_sprite_2
