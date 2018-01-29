@@ -1,0 +1,13 @@
+       aorg >7118
+main   copy "4kcompo.a99"
+last_word:
+       data -1
+       end main
+
+
+
+
+
+
+
+

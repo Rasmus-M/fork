@@ -3,6 +3,9 @@
 4kcompo.dsk
 4kcompo.lst
 4kcompo.obj
+4kcompo.bin
+4kcompo8.bin
+make.log
 mag/horz.a99
 mag/horz2.a99
 mag/vert.a99
