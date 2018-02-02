@@ -40,7 +40,7 @@ n_sprite_patterns:
 n_tile_sprites:
        equ  8
 n_enemy_sprites:
-       equ  8
+       equ  12
 n_bullet_sprites:
        equ  3
 n_sprites:
@@ -794,7 +794,7 @@ update_and_display_time_left:
        mov  r11,*r10+                  ; Push return address onto the stack
        mov  @time_left,r0
        jeq  update_and_display_time_left_1
-       ai   r0,-8
+       ai   r0,-16
        mov  r0,@time_left
        andi r0,>00ff
        jne  update_and_display_time_left_2
