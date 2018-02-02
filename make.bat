@@ -1,30 +1,30 @@
 @rem disk image
-IF EXIST 4kcompo.dsk GOTO :dskok
-xdm99.py 4kcompo.dsk --initialize DSSD -n 4KCOMPO
+IF EXIST fork.dsk GOTO :dskok
+xdm99.py fork.dsk --initialize DSSD -n FORK
 :dskok
 
 @rem object file
-xas99.py -R -S -L 4kcompo.lst -o 4kcompo.obj source/disk.a99
+xas99.py -R -S -L fork.lst -o fork.obj source/disk.a99
 
 @rem E/A#5 file at >A000
-xas99.py -R -i -o 4kcompo source/disk.a99
-xdm99.py 4kcompo.dsk -a 4kcompo -n 4KCOMPO
+xas99.py -R -i -o fork source/disk.a99
+xdm99.py fork.dsk -a fork -n FORK
 
 @rem object file at >7118
-xas99.py -R -D MINIMEM -L 4kcompomm.lst -o 4kcompomm.obj source/minimem.a99
-xdm99.py 4kcompo.dsk -a 4kcompomm.obj -n 4KCOMPOMM
+@rem xas99.py -R -D MINIMEM -L forkmm.lst -o forkmm.obj source/minimem.a99
+@rem xdm99.py fork.dsk -a forkmm.obj -n FORKMM
 
 @rem clean up
-IF EXIST 4kcompo.bin_6000 (
-del 4kcompo.bin_6000
+IF EXIST fork.bin_6000 (
+del fork.bin_6000
 )
-IF EXIST 4kcompo.bin (
-del 4kcompo.bin
+IF EXIST fork.bin (
+del fork.bin
 )
 
 @rem cart
-xas99.py -b -R -D cart -o 4kcompo.bin source/cart.a99
-ren 4kcompo.bin_6000 4kcompo.bin
+xas99.py -b -R -D cart -o fork.bin source/cart.a99
+ren fork.bin_6000 fork.bin
 
 @rem 32k cart
-java -jar tools/ea5tocart.jar 4kcompo "4K COMPO" > make.log
+java -jar tools/ea5tocart.jar fork "FORK" > make.log

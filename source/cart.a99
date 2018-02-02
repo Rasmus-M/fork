@@ -1,5 +1,5 @@
        aorg >6000
        copy "header.a99"
        bss  >1000-header_length
-main   copy "4kcompo.a99"
+main   copy "fork.a99"
        end
