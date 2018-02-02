@@ -229,6 +229,8 @@ bullet_pat_col:
        bl   @init
 new_game:
        bl   @init_game
+       li   r14,display_bar
+       bl   @display_both_name_tables
        li   r0,128+9
        li   r1,text_fire_to_start
        bl   @display_text
@@ -241,6 +243,8 @@ main_loop:
        inc  @frame_no
        jmp  main_loop
 game_over:
+       li   r14,display_bar
+       bl   @display_both_name_tables
        li   r0,128+11
        li   r1,text_game_over
        bl   @display_text
@@ -1398,6 +1402,20 @@ display_text_4:
        b    *r15                       ; Pop return address and return
 *// display_text
 
+*********************************************************************************
+*
+* Display an empty bar across the screen
+*
+display_bar:
+       mov  r11,*r10+                  ; Push return address onto the stack
+       mov  @double_buffer_address,r0
+       ai   r0,96
+       li   r1,chr_space*256
+       li   r2,96
+       bl   @vsmw
+*      Return
+       b    *r15                       ; Pop return address and return
+*// display_bar
 
 *********************************************************************************
 *
