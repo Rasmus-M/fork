@@ -348,7 +348,7 @@ check_collisions:
        bl   @check_sprite_collision
        jeq  check_collisions_3
 *      Collision
-       ci   r3,tile_sprite_list
+       ci   r3,enemy_sprite_list
        jhe  check_collisions_1
 *      Collision with target
        mov  @time_left,r0
@@ -358,8 +358,15 @@ check_collisions:
        bl   @next_level
        jmp  check_collisions_6
 check_collisions_1:
-       ci   r3,enemy_sprite_list
+       ci   r3,tile_sprite_list
        jhe  check_collisions_2
+*      Collision with enemy
+       bl   @spawn_enemy_sprite
+       bl   @player_hit
+       jmp  check_collisions_6
+check_collisions_2:
+       ci   r3,bullet_sprite_list
+       jhe  check_collisions_6
 *      Collision with tile
        mov  @sprite_count(r3),r0
        jne  check_collisions_6
@@ -389,13 +396,6 @@ check_collisions_1:
        inc  @lives
        li   r9,display_lives
        bl   @display_both_name_tables
-       jmp  check_collisions_6
-check_collisions_2:
-       ci   r3,bullet_sprite_list
-       jhe  check_collisions_6
-*      Collision with enemy
-       bl   @spawn_enemy_sprite
-       bl   @player_hit
        jmp  check_collisions_6
 *      Collisions between bullets and enemies
 check_collisions_3:
@@ -587,7 +587,7 @@ move_player_5:
 move_other_sprites:
        mov  r11,*r10+                  ; Push return address onto the stack
        li   r2,n_sprites
-       li   r3,tile_sprite_list
+       li   r3,enemy_sprite_list
 move_other_sprites_1:
        mov  *r3,r0
        jeq  move_other_sprites_5
@@ -605,7 +605,9 @@ move_other_sprites_1:
 *      Move
        bl   @move_sprite
 *      Check sprite counter for tiles
-       ci   r3,enemy_sprite_list
+       ci   r3,tile_sprite_list
+       jl   move_other_sprites_5
+       ci   r3,bullet_sprite_list
        jhe  move_other_sprites_5
        mov  @sprite_count(r3),r0
        jeq  move_other_sprites_5
@@ -615,16 +617,16 @@ move_other_sprites_1:
        jmp  move_other_sprites_5
 *      Out of bounds
 move_other_sprite_2:
-       ci   r3,enemy_sprite_list
+       ci   r3,tile_sprite_list
        jhe  move_other_sprites_3
-*      Tile sprite out of bounds
-       bl   @spawn_tile_sprite
+*      Enemy sprite out of bounds
+       bl   @spawn_enemy_sprite
        jmp  move_other_sprites_5
 move_other_sprites_3:
        ci   r3,bullet_sprite_list
        jhe  move_other_sprites_4
-*      Enemy sprite out of bounds
-       bl   @spawn_enemy_sprite
+*      Tile sprite out of bounds
+       bl   @spawn_tile_sprite
        jmp  move_other_sprites_5
 move_other_sprites_4:
 *      Bullet out of bounds
@@ -661,14 +663,13 @@ upload_sprites:
 upload_sprites_6:
        sb   @b02,r1
 upload_sprites_7:
-;       andi r1,>9f0f
        mov  r1,@player_pattern
 upload_sprites_1:
        ai   r0,16+2
        bl   @vwad
        movb r1,*r13
        movb @r1lb,*r13
-*      Tile and enemy sprites
+*      Tile, target, enemy, bullet sprites
        mov  @player_y,r6
        andi r6,>fffc                   ; Needed for steady sprites
        ai   r6,-(center_y*4)
@@ -1066,7 +1067,7 @@ spawn_sprite_1:
        ori  r5,>0060                   ; Center on meta tile
 *      Check for other sprite at same position
        li   r1,sprite_list
-       li   r0,1+n_tile_sprites+n_bullet_sprites
+       li   r0,1+n_tile_sprites+n_enemy_sprites
 spawn_sprite_2:
        c    r4,@sprite_x(r1)
        jne  spawn_sprite_3
@@ -1166,6 +1167,7 @@ next_level_3:
        dec  r8
        jne  next_level_1
        li   r8,n_bullet_sprites
+       li   r3,bullet_sprite_list
 next_level_4:
        clr  *r3
        ai   r3,sprite_size
@@ -1623,12 +1625,12 @@ sprite_list:
        equ  one_time_code
 target_sprite:
        equ  sprite_list
-tile_sprite_list:
-       equ  sprite_list+sprite_size
 enemy_sprite_list:
-       equ  sprite_size*n_tile_sprites+tile_sprite_list
-bullet_sprite_list:
+       equ  target_sprite+sprite_size
+tile_sprite_list:
        equ  sprite_size*n_enemy_sprites+enemy_sprite_list
+bullet_sprite_list:
+       equ  sprite_size*n_tile_sprites+tile_sprite_list
 sprite_list_end:
        equ  sprite_size*n_bullet_sprites+bullet_sprite_list
 map_rows:

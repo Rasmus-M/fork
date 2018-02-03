@@ -374,11 +374,6 @@ gmode_1:
        bl   @vwtr                      ; Set register
        dec  r2
        jne  gmode_1
-;*      Clear VDP RAM
-;       clr  r0
-;       clr  r1
-;       li   r2,>4000
-;       bl   @vsmw
 *      Return
        b    *r15                       ; Pop return address and return
 *      VDP registers
