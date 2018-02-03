@@ -174,7 +174,7 @@ buffer:                                ; 32 bytes buffer
        equ  sfx_freq_2+2
 copy_loop:                             ; Code in PAD
        equ  buffer+32
-pad_max:                               ; Next availble PAD address
+pad_max:                               ; Next available PAD address
        equ  copy_loop+24
 pad_init_start:                        ; Clear from here
        equ  frame_no
@@ -791,22 +791,14 @@ update_name_table_1:
        ci   r3,win_height
        jlt  update_name_table_1
 *      Return
-       dect r10                        ; Pop return address off the stack
-       mov  *r10,r11
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *      Copy loop
 copy_loop_1:
        movb *r1+,*r13                  ; Write to VDP
-       movb *r1+,*r13
-       movb *r1+,*r13
-       movb *r1+,*r13
-       movb *r1+,*r13
-       movb *r1+,*r13
-       movb *r1+,*r13
-       movb *r1+,*r13
+*      ... above repeated 8 times ...
        s    r0,r1
        dec  r2
-       jne  copy_loop_1
+       jne  $-20
        b    *r11
 copy_loop_2
 *// update_name_table

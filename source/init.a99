@@ -7,7 +7,13 @@ init:
        bl   @gmode
        li   r0,copy_loop_1
        li   r1,copy_loop
-       li   r2,copy_loop_2-copy_loop_1
+       li   r2,16
+init_1:
+       mov  *r0,*r1+
+       dect r2
+       jne  init_1
+       inct r0
+       li   r2,8
        bl   @copy_memory
        bl   @init_patterns
        bl   @init_gfx
