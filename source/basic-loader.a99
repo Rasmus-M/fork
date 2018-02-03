@@ -1,0 +1,10 @@
+       def  SLOAD
+       def  SFIRST
+       def  SLAST
+       aorg >7000
+SLOAD
+SFIRST copy "fork.a99"
+SLAST  equ $
+       aorg >a004
+       data SLAST
+       end
