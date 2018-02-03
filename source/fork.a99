@@ -1031,10 +1031,12 @@ spawn_tile_sprite_1:
        li   r0,life_pat_col
 spawn_tile_sprite_2:
        mov  r0,*r3
-      clr  @sprite_vx(r3)
-       clr  @sprite_vy(r3)
-       clr  @sprite_ax(r3)
-       clr  @sprite_ay(r3)
+       mov  r3,r0
+       ai   r0,sprite_vx
+       clr  *r0+                       ; vx
+       clr  *r0+                       ; vy
+       clr  *r0+                       ; ax
+       clr  *r0                        ; ay
        jmp  spawn_sprite_1
 *// spawn_tile_sprite
 
