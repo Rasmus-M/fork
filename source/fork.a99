@@ -665,7 +665,8 @@ upload_sprites_7:
        mov  r1,@player_pattern
 upload_sprites_1:
        ai   r0,16+2
-       bl   @vsbw
+       bl   @vwad
+       movb r1,*r13
        movb @r1lb,*r13
 *      Tile and enemy sprites
        mov  @player_y,r6
@@ -1524,23 +1525,6 @@ vwad:
 
 *********************************************************************
 *
-* VDP Single Byte Write
-*
-* r0: Write address in VDP RAM
-* r1: MSB of R1 sent to VDP RAM
-*
-* r0 is modified, but can be restored with: ANDI R0,>3FFF
-*
-vsbw:
-       movb @r0lb,@vdpwa               ; Send low byte of VDP RAM write address
-       ori  r0,>4000                   ; Set read/write bits 14 and 15 to write (01)
-       movb r0,@vdpwa                  ; Send high byte of VDP RAM write address
-       movb r1,*r13                    ; Write byte to VDP RAM
-       b    *r11
-*// vsbw
-
-*********************************************************************
-*
 * VDP Single Byte Multiple Write
 *
 * r0: Write address in VDP RAM
@@ -1550,14 +1534,13 @@ vsbw:
 * r0 is modified, but can be restored with: ANDI R0,>3FFF
 *
 vsmw:
-       movb @r0lb,@vdpwa               ; Send low byte of VDP RAM write address
-       ori  r0,>4000                   ; Set read/write bits 14 and 15 to write (01)
-       movb r0,@vdpwa                  ; Send high byte of VDP RAM write address
+       mov  r11,*r10+                  ; Push return address onto the stack
+       bl   @vwad
 vsmw_1:
        movb r1,*r13                    ; Write byte to VDP RAM
        dec  r2
        jne  vsmw_1
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// vsbw
 
 *********************************************************************
@@ -1569,14 +1552,13 @@ vsmw_1:
 * r2: Number of bytes to copy
 *
 vmbw:
-       movb @r0lb,@vdpwa               ; Send low byte of VDP RAM write address
-       ori  r0,>4000                   ; Set read/write bits 14 and 15 to write (01)
-       movb r0,@vdpwa                  ; Send high byte of VDP RAM write address
+       mov  r11,*r10+                  ; Push return address onto the stack
+       bl   @vwad
 vmbw_1:
        movb *r1+,*r13                  ; Write byte to VDP RAM
        dec  r2
        jne  vmbw_1
-       b    *r11
+       b    *r15                       ; Pop return address and return
 *// vdpcp
 
 ***************************************************************************
@@ -1592,9 +1574,8 @@ vmbw_1:
 vmbr:
        movb @r0lb,@vdpwa               ; Send low byte of VDP RAM write address
        movb r0,@vdpwa                  ; Send high byte of VDP RAM write address
-       li   r0,vdprd
 vmbr_1:
-       movb *r0,*r1+                   ; Read byte from VDP RAM
+       movb @vdprd,*r1+                ; Read byte from VDP RAM
        dec  r2                         ; Byte counter
        jne  vmbr_1                     ; Check if finished
        b    *r11
