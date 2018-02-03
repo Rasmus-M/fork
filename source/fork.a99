@@ -112,10 +112,8 @@ rand_no:                               ; Random number
        equ  padvar
 frame_no:                              ; Frame counter
        equ  rand_no+2
-jump_addr:
-       equ  frame_no+2
 coinc:                                 ; Coincidence flag
-       equ  jump_addr+2
+       equ  frame_no+2
 double_buffer_flag:                    ; Current double buffer flag
        equ  coinc+2
 double_buffer_address:                 ; Current double buffer address
@@ -231,7 +229,7 @@ bullet_pat_col:
        bl   @init
 new_game:
        bl   @init_game
-       li   r14,display_bar
+       li   r9,display_bar
        bl   @display_both_name_tables
        li   r0,128+9
        li   r1,text_fire_to_start
@@ -245,7 +243,7 @@ main_loop:
        inc  @frame_no
        jmp  main_loop
 game_over:
-       li   r14,display_bar
+       li   r9,display_bar
        bl   @display_both_name_tables
        li   r0,128+11
        li   r1,text_game_over
@@ -260,14 +258,11 @@ game_over:
 *
 main_actions:
        mov  r11,*r10+                  ; Push return address onto the stack
-       li   r0,jump_table
-       mov  r0,@jump_addr
+       li   r14,jump_table
 main_actions_loop:
-       mov  @jump_addr,r0
-       mov  *r0,r0
+       mov  *r14+,r0
        jeq  main_return
        bl   *r0
-       inct @jump_addr
        jmp  main_actions_loop
 main_return:
        dect r10                        ; Pop return address off the stack
@@ -378,10 +373,11 @@ check_collisions_1:
        neg  r0
        sra  r0,5
        mov  r0,@sprite_ay(r3)
-       neg  @player_vx
-       neg  @player_vy
-       neg  @player_ax
-       neg  @player_ay
+       li   r0,player_vx
+       neg  *r0+                       ; vx
+       neg  *r0+                       ; vy
+       neg  *r0+                       ; ax
+       neg  *r0                        ; ay
        li   r0,32
        mov  r0,@sprite_count(r3)
        a    @d10,@score
@@ -391,7 +387,7 @@ check_collisions_1:
        jne  check_collisions_6
        bl   @play_zap
        inc  @lives
-       li   r14,display_lives
+       li   r9,display_lives
        bl   @display_both_name_tables
        jmp  check_collisions_6
 check_collisions_2:
@@ -515,7 +511,18 @@ user_input_5:
 *      Fire not pressed
        clr  @fire                      ; Set released
 user_input_6:
+*      Check quit
+       clr  r1                         ; Test column 0
+       li   r12,>0024                  ; Address for column selection
+       ldcr r1,3                       ; Select column
+       li   r12,>0006                  ; Address to read rows
+       stcr r1,8
+       andi r1,>1100
+       jeq  quit
        b    *r15                       ; Pop return address and return
+*      Quit
+quit   clr  @>83c4                     ; Reset user ISR address
+       blwp @>0000
 dplus:
        data >0020
 dminus:
@@ -815,7 +822,7 @@ update_and_display_time_left:
        mov  r0,@time_left
        andi r0,>00ff
        jne  update_and_display_time_left_2
-       li   r14,display_time_left
+       li   r9,display_time_left
        bl   @display_both_name_tables
        jmp  update_and_display_time_left_2
 *      Time's up
@@ -854,16 +861,16 @@ display_position:
 *
 * Display to both name tables
 *
-* r14: Display routine to execute
+* r9: Display routine to execute
 *
 display_both_name_tables:
        mov  r11,*r10+                  ; Push return address onto the stack
        li   r0,nametb
        mov  r0,@double_buffer_address
-       bl   *r14
+       bl   *r9
        li   r0,namet1
        mov  r0,@double_buffer_address
-       bl   *r14
+       bl   *r9
 *      Return
        b    *r15                       ; Pop return address and return
 *// display_both_name_tables
@@ -913,7 +920,7 @@ display_score:
        mov  r11,*r10+                  ; Push return address onto the stack
        c    @score,@disp_score
        jeq  display_score_1
-       li   r14,display_score_2
+       li   r9,display_score_2
        bl   @display_both_name_tables
        mov  @score,@disp_score
 *      Return
@@ -1126,7 +1133,7 @@ add_bullet_sprite_3:
 player_hit:
        mov  r11,*r10+                  ; Push return address onto the stack
        dec  @lives
-       li   r14,display_lives
+       li   r9,display_lives
        bl   @display_both_name_tables
        mov  @lives,r0
        jeq  player_hit_1
@@ -1200,7 +1207,7 @@ next_level_5:
        li   r0,target_pat_col
        mov  r0,@sprite_list+sprite_pattern
 *      Display position
-       li   r14,display_target_position
+       li   r9,display_target_position
        bl   @display_both_name_tables
 *      Reset time
        li   r0,>6400
@@ -1215,7 +1222,7 @@ next_level_5:
 *      Next level
        inc  @level
 *      Display level
-       li   r14,display_level
+       li   r9,display_level
        bl   @display_both_name_tables
 *      Return
        b    *r15                       ; Pop return address and return
@@ -1243,7 +1250,7 @@ init_game:
        seto @disp_score
        li   r0,3
        mov  r0,@lives
-       li   r14,display_lives
+       li   r9,display_lives
        bl   @display_both_name_tables
 *      Init sprites
        li   r8,n_tile_sprites
