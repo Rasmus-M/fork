@@ -900,13 +900,13 @@ display_target_position:
        mov  @double_buffer_address,r0
        ai   r0,22*32+21
        bl   @vwad
-       mov  @sprite_list+sprite_x,r1
+       mov  @target_sprite+sprite_x,r1
        bl   @display_byte
 *      Target y
        mov  @double_buffer_address,r0
        ai   r0,22*32+28
        bl   @vwad
-       mov  @sprite_list+sprite_y,r1
+       mov  @target_sprite+sprite_y,r1
        bl   @display_byte
 *      Return
        b    *r15                       ; Pop return address and return
@@ -1196,16 +1196,16 @@ next_level_5:
        a    @player_x,r4
        andi r4,>ff00
        ori  r4,>0060
-       mov  r4,@sprite_list+sprite_x
+       mov  r4,@target_sprite+sprite_x
 *      Target y
        sla  r5,8
        a    @player_y,r5
        andi r5,>ff00
        ori  r5,>0060
-       mov  r5,@sprite_list+sprite_y
+       mov  r5,@target_sprite+sprite_y
 *      Target pattern and color
        li   r0,target_pat_col
-       mov  r0,@sprite_list+sprite_pattern
+       mov  r0,@target_sprite+sprite_pattern
 *      Display position
        li   r9,display_target_position
        bl   @display_both_name_tables
@@ -1646,6 +1646,8 @@ text_line_2:
 
 sprite_list:
        equ  one_time_code
+target_sprite:
+       equ  sprite_list
 tile_sprite_list:
        equ  sprite_list+sprite_size
 enemy_sprite_list:
