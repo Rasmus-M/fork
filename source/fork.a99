@@ -1131,6 +1131,7 @@ player_hit:
        dec  @lives
        li   r9,display_lives
        bl   @display_both_name_tables
+       bl   @play_crash
        mov  @lives,r0
        jeq  player_hit_1
        li   r0,>01a2
@@ -1138,7 +1139,6 @@ player_hit:
        li   r0,>070f
        bl   @vwtr
        mov  @d10,@player_count
-       bl   @play_crash
 *      Return
 player_hit_1:
        b    *r15                       ; Pop return address and return
@@ -1233,7 +1233,6 @@ level_colors:
 *
 init_game:
        mov  r11,*r10+                  ; Push return address onto the stack
-       bl   @mute_sound
        li   r0,pad_init_start
        clr  *r0
        li   r1,pad_init_start+2
@@ -1443,12 +1442,15 @@ display_bar:
 wait_fire:
        mov  r11,*r10+                  ; Push return address onto the stack
 wait_fire_1:
+       bl   @vsync
+       bl   @sfx_player
        bl   @read_joystick
        tb   0
        jeq  wait_fire_1
 wait_fire_2:
        tb   0
        jne  wait_fire_2
+       bl   @mute_sound
 *      Return
        b    *r15                       ; Pop return address and return
 *// wait_fire
