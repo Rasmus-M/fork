@@ -1,0 +1,79 @@
+* LZ4 decompressor for 9900
+* Ported by Tursi from LZ4 data decompressor for Apple II
+* by Peter Ferrie (peter.ferrie@gmail.com)
+
+* sample calling:
+* LI R0,SRCADR           ; pack data source in CPU
+* LI R1,DESTADR          ; destination in CPU
+* LI R2,SRCADR+PACKBYTES ; end of packed data address in CPU
+* BL @UNPACKLZ4FROMVDP   ; do it!
+
+* unpacker variables, no need to change these
+* for now we'll just use registers
+; src     equ 0
+; dst     equ 1
+; end     equ 2
+; a       equ 3
+; b       equ 4
+; count   equ 5
+; delta   equ 6
+; stack   equ 7
+; return  equ 8
+
+* unpacker entrypoint
+* R0 = src address
+* R1 = destination address
+* R2 = end of packed data
+
+unpacklz4:
+       mov r11,r8                      ; remember return address
+
+parsetoken:
+       movb *r0+,r3                    ; read a token byte
+       movb r3,r4                      ; save it off for later
+       srl  r3,12                      ; make a counter out of the literal count MS nibble
+       jeq  copymatches                ; if it's zero, go to the match copy
+
+       bl   @buildcount                ; check for additional bytes of length
+       bl   @docopy                    ; we know the src, dest, and count, so do it
+       c    r0,r2                      ; see if we're done yet (only place src advances)
+       jl   copymatches                ; skip over if not done and work on the back reference
+done:
+       b    *r8                        ; back to caller
+
+copymatches:
+       movb *r0+,r6                    ; getsrc -> lsb (sadly it can be unaligned)
+       swpb r6
+       movb *r0+,r6                    ; getsrc -> msb - this gives us the offset
+       mov  r4,r3                      ; get the token back
+       andi r3,>0f00                   ; get the reference count from the token
+       srl  r3,8                       ; make it a count
+       bl   @buildcount                ; check for additional bytes of length
+
+       ai   r5,4                       ; reference length always adds 4 bytes
+       mov  r0,r7                      ; save the current compressed source address
+       mov  r1,r0                      ; get the current destination pointer
+       s    r6,r0                      ; and subtract the delta
+       bl   @docopy                    ; we have src, dest, and count, do the copy
+       mov  r7,r0                      ; restore the compressed pointer
+       jmp  parsetoken                 ; and go parse the next token
+
+docopy:
+       movb *r0+,*r1+                  ; copy one byte
+       dec  r5                         ; count down
+       jne  docopy                     ; loop if not done
+       rt                              ; return if we are
+
+* start with a count in 'a', build an actual count in 'count'
+buildcount:
+       mov  r3,r5                      ; store the count
+       ci   r5,15                      ; if it's not 15, we're done
+       jne  bc2
+bc1:
+       movb *r0+,r3                    ; get the next byte
+       srl  r3,8                       ; make it a count
+       a    r3,r5                      ; add it in
+       ci   r3,255                     ; check if there are more
+       jeq  bc1                        ; there are
+bc2:
+       rt                              ; else we're done

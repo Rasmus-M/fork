@@ -3,32 +3,42 @@ IF EXIST fork.dsk GOTO :dskok
 xdm99.py fork.dsk --initialize DSSD -n FORK
 :dskok
 
-@rem object file
+@rem object file at >A000
 xas99.py -R -S -L fork.lst -o fork.obj source/disk.a99
 
 @rem E/A#5 file at >A000
 xas99.py -R -i -o fork source/disk.a99
 xdm99.py fork.dsk -a fork -n FORK
 
-@rem object file at >7118
-@rem xas99.py -R -D MINIMEM -L forkmm.lst -o forkmm.obj source/minimem.a99
-@rem xdm99.py fork.dsk -a forkmm.obj -n FORKMM
+@rem 32k cart
+java -jar tools/ea5tocart.jar fork "FORK" > make.log
+
+@rem TI BASIC loader
+xas99.py -R -L fork-bas.lst -o fork-bas.obj source/basic-loader.a99
+xdm99.py fork.dsk -a fork-bas.obj -f DIS/FIX80 -n FORKBAS
+
+@rem cart
 
 @rem clean up
 IF EXIST fork.bin_6000 (
 del fork.bin_6000
 )
+IF EXIST fork.bin_7000 (
+del fork.bin_7000
+)
+IF EXIST fork.bin_7000.lz4 (
+del fork.bin_7000.lz4
+)
 IF EXIST fork.bin (
 del fork.bin
 )
 
-@rem cart
+xas99.py -b -R -D cart -o fork.bin source/cart-7000.a99
+tools\lz4.exe fork.bin_7000
+
 xas99.py -b -R -D cart -o fork.bin source/cart.a99
-ren fork.bin_6000 fork.bin
+tools\pad.exe fork.bin_6000 fork.bin 4096
 
-@rem 32k cart
-java -jar tools/ea5tocart.jar fork "FORK" > make.log
-
-rem TI BASIC loader
-xas99.py -R -L fork-bas.lst -o fork-bas.obj source/basic-loader.a99
-xdm99.py fork.dsk -a fork-bas.obj -f DIS/FIX80 -n FORKBAS
+del fork.bin_6000
+del fork.bin_7000
+del fork.bin_7000.lz4

@@ -1,5 +1,16 @@
        aorg >6000
        copy "header.a99"
-       bss  >1000-header_length
-main   copy "fork.a99"
+       even
+main:
+       limi 0
+       lwpi >8300
+       li   r0,pak_data+11
+       li   r1,>7000
+       li   r2,pak_data_end-8
+       bl   @unpacklz4
+       b    @>7000
+       copy "unlz4.a99"
+pak_data:
+       bcopy "..\fork.bin_7000.lz4"
+pak_data_end
        end

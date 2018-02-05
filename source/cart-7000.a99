@@ -1,3 +1,3 @@
-       aorg >a000
+       aorg >7000
 main   copy "fork.a99"
        end  main
