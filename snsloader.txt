@@ -1,0 +1,47 @@
+From http://atariage.com/forums/topic/273371-4k-shortnsweet-game-contest/page-7#entry3952283
+
+Here is the loader to load 4K into the minimemory from TI BASIC.
+
+Use Classic99 and the E/A cartridge to make and load the assembly program. Classic99 has cartrige RAM from >6000 to >7FFF
+so you can load and test your program there.
+
+In the source code start with:
+
+DEF SLOAD
+DEF SFIRST
+DEF SLAST
+AORG  >7000
+Then the program, and at the end:
+SLAST
+AORG >A004 plugs the last address into R2
+DATA SLAST
+END
+ 
+>7000 is the starting address of the program.  There is a test program in the folder called MINIMEMTST.TXT and MINIMEMTST.OBJ
+which does nothing but get into an endless loop at >7000 and fills the memory with >FFFF, but with the debugger you can
+see that the proper bytes are saved and loaded.
+ 
+Assemble the usual way, then get into TI BASIC and type:
+CALL INIT
+CALL LOAD("DSK3.SNSLOADER.OBJ")  *load the loader 1st
+CALL LOAD("DSK3.MINIMEMTST.OBJ") * then your program
+CALL LOAD(-31804,160)                          *Resist the urge to use CALL LINK which writes a couple of bogus bytes
+into the program and will make it crash!
+ 
+Now the code  at >7000 is embedded in a TI BASIC program.  Save to disk or cassette.   
+You can run it with a supercart like you just did in Classic99 or else insert the MiniMemory cartridge and type: OLD DSK1.
+or OLD CS1 and RUN.
+ 
+When the program starts the TI is almost the same as when running an EA5 program:
+WKSP is >83E0
+large and small characters are loaded to V0900
+The vdp registers are the same.  (Almost - BASIC sets some of them to use V4000 as the screen which works the same as V0000)
+The program starts running at >7000
+ 
+differences:
+The color table at V0380 is Black on Cyan
+The screen is not cleared.  This can be done by adding 15 CALL HCHAR(1,1,192,768) to the loader.
+ 
+<edit> If you look at the source code for the loader you will see that I have set up the GPL stack to do the scroll routine.
+The reason is that the loader uses the interrupt hook at >83C4 to start up and that might take up to 1/60 of a second.
+So the scroll just gives BASIC something innocuous  to do until the interrupt can take control.
