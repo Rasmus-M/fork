@@ -510,8 +510,11 @@ user_input_7:
 user_input_5:
 *      Fire not pressed
        clr  @fire                      ; Set released
-user_input_6:
+       jmp  user_input_6
 *      Check quit
+check_quit:
+       mov  r11,*r10+                  ; Push return address onto the stack
+user_input_6:
        clr  r1                         ; Test column 0
        li   r12,>0024                  ; Address for column selection
        ldcr r1,3                       ; Select column
@@ -564,7 +567,7 @@ move_player_3:
        inct r3
        dec  r2
        jne  move_player_0
-*      Blaking when hit
+*      Blanking when hit
        mov  @player_count,r0
        jeq  move_player_5
        dec  r0
@@ -1444,6 +1447,7 @@ wait_fire:
 wait_fire_1:
        bl   @vsync
        bl   @sfx_player
+       bl   @check_quit
        bl   @read_joystick
        tb   0
        jeq  wait_fire_1
