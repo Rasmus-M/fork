@@ -1,26 +1,10 @@
 *********************************************************************
 *
-* Mute sound
-*
-mute_sound:
-       li   r0,mute_table              ; Mute all
-       li   r1,sound
-       movb *r0+,*r1
-       movb *r0+,*r1
-       movb *r0+,*r1
-       movb *r0+,*r1
-       b    *r11
-mute_table:
-       byte >9f, >bf, >df, >ff
-*// mute_sound
-
-*********************************************************************
-*
 * Play shot
 *
 play_shot:
        li   r0,sfx_shot
-       li   r1,2
+       clr  r1
        jmp  play_sfx
 *// play_shot
 
@@ -30,7 +14,7 @@ play_shot:
 *
 play_boing:
        li   r0,sfx_boing
-       clr  r1
+       li   r1,2
        jmp  play_sfx
 *// play_boing
 
@@ -40,7 +24,7 @@ play_boing:
 *
 play_bing:
        li   r0,sfx_bing
-       clr  r1
+       li r1,4
        jmp  play_sfx
 *// play_boing
 
@@ -50,7 +34,7 @@ play_bing:
 *
 play_zap:
        li   r0,sfx_zap
-       clr  r1
+       li r1,6
        jmp  play_sfx
 *// play_zap
 
@@ -69,7 +53,7 @@ play_crash:
 * Play sound fx
 *
 * r0: Contains address of sound sx to play
-* r1: Channel offset (0 = channel 1, or 2 = channel 2)
+* r1: Channel offset (0 = channel 1, 2 = channel 2, 4 = channel 3, 6 = channel 4)
 *
 * Modifies ?
 *
@@ -89,11 +73,11 @@ play_sfx_1:
 *
 * Sound fx player
 *
-* Modifies ?
+* Modifies r0-r3
 *
 sfx_player:
        li   r1,sound
-       li   r2,2
+       li   r2,6
 sfx_player_1:
        mov  @sfx_addr_1(r2),r3
        jeq  sfx_player_4
@@ -119,6 +103,7 @@ sfx_player_3:
        dec  @sfx_duration_1(r2)
 sfx_player_4:
        dect r2
+       jgt  sfx_player_1
        jeq  sfx_player_1
        b    *r11
 
@@ -143,6 +128,6 @@ sfx_boing:
 sfx_bing:
        byte >10,>A0,>00,>01,>04,>00
 sfx_zap:
-       byte >10,>A0,>00,>01,>04,>01
+       byte >10,>C0,>00,>01,>04,>01
 sfx_crash:
        byte >10,>E6,>00,>01

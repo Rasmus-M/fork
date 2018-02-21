@@ -158,20 +158,36 @@ sfx_addr_1:                            ; Sound fx address channel 1
        equ  time_left+2
 sfx_addr_2:                            ; Sound fx address channel 2
        equ  sfx_addr_1+2
-sfx_duration_1:                        ; Sound fx counter channel 1
+sfx_addr_3:                            ; Sound fx address channel 3
        equ  sfx_addr_2+2
+sfx_addr_4:                            ; Sound fx address channel 4
+       equ  sfx_addr_3+2
+sfx_duration_1:                        ; Sound fx counter channel 1
+       equ  sfx_addr_4+2
 sfx_duration_2:                        ; Sound fx counter channel 2
        equ  sfx_duration_1+2
-sfx_attn_1:                            ; Sound fx attenuation channel 1
+sfx_duration_3:                        ; Sound fx counter channel 3
        equ  sfx_duration_2+2
+sfx_duration_4:                        ; Sound fx counter channel 4
+       equ  sfx_duration_3+2
+sfx_attn_1:                            ; Sound fx attenuation channel 1
+       equ  sfx_duration_4+2
 sfx_attn_2:                            ; Sound fx attenuation channel 2
        equ  sfx_attn_1+2
-sfx_freq_1:                            ; Sound fx frequency channel 1
+sfx_attn_3:                            ; Sound fx attenuation channel 3
        equ  sfx_attn_2+2
+sfx_attn_4:                            ; Sound fx attenuation channel 4
+       equ  sfx_attn_3+2
+sfx_freq_1:                            ; Sound fx frequency channel 1
+       equ  sfx_attn_4+2
 sfx_freq_2:                            ; Sound fx frequency channel 2
        equ  sfx_freq_1+2
-buffer:                                ; 32 bytes buffer
+sfx_freq_3:                            ; Sound fx frequency channel 3
        equ  sfx_freq_2+2
+sfx_freq_4:                            ; Sound fx frequency channel 4
+       equ  sfx_freq_3+2
+buffer:                                ; 32 bytes buffer
+       equ  sfx_freq_4+2
 copy_loop:                             ; Code in PAD
        equ  buffer+32
 pad_max:                               ; Next available PAD address
@@ -817,8 +833,13 @@ update_and_display_time_left:
        jeq  update_and_display_time_left_1
        ai   r0,-16
        mov  r0,@time_left
+       mov  r0,r1
        andi r0,>00ff
        jne  update_and_display_time_left_2
+       ci   r1,>0a00
+       jh   update_and_display_time_left_3
+       bl   @play_bing
+update_and_display_time_left_3:
        li   r9,display_time_left
        bl   @display_both_name_tables
        jmp  update_and_display_time_left_2
@@ -1454,7 +1475,6 @@ wait_fire_1:
 wait_fire_2:
        tb   0
        jne  wait_fire_2
-       bl   @mute_sound
 *      Return
        b    *r15                       ; Pop return address and return
 *// wait_fire
