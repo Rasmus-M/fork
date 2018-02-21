@@ -1465,10 +1465,14 @@ display_bar:
 *
 wait_fire:
        mov  r11,*r10+                  ; Push return address onto the stack
+       li   r4,20
 wait_fire_1:
        bl   @vsync
        bl   @sfx_player
        bl   @check_quit
+       dec  r4
+       jgt  wait_fire_1
+       inc  r4
        bl   @read_joystick
        tb   0
        jeq  wait_fire_1
