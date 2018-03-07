@@ -40,7 +40,7 @@ n_sprite_patterns:
 n_tile_sprites:
        equ  8
 n_enemy_sprites:
-       equ  12
+       equ  16
 n_bullet_sprites:
        equ  3
 n_sprites:
@@ -848,6 +848,7 @@ update_and_display_time_left_1:
        mov  @player_count,r0
        jgt  update_and_display_time_left_2
        bl   @player_hit
+       bl   @init_level
 *      Return
 update_and_display_time_left_2:
        b    *r15                       ; Pop return address and return
@@ -1174,31 +1175,48 @@ player_hit_1:
 *
 next_level:
        mov  r11,*r10+                  ; Push return address onto the stack
+*      Next level
+       inc  @level
+*      Init level
+       bl   @init_level
+*      Display level
+       li   r9,display_level
+       bl   @display_both_name_tables
+*      Return
+       b    *r15                       ; Pop return address and return
+*// next_level
+
+*********************************************************************************
+*
+* Initalize level
+*
+init_level:
+       mov  r11,*r10+                  ; Push return address onto the stack
 *      Init sprites
        li   r8,n_enemy_sprites
        li   r3,enemy_sprite_list
-next_level_1:
+init_level_1:
        mov  @level,r0
-       inct r0
+       inc  r0
        c    r8,r0
-       jgt  next_level_2
+       jgt  init_level_2
        bl   @spawn_enemy_sprite
-       jmp  next_level_3
-next_level_2:
+       jmp  init_level_3
+init_level_2:
        clr  *r3
-next_level_3:
+init_level_3:
        ai   r3,sprite_size
        dec  r8
-       jne  next_level_1
+       jne  init_level_1
        li   r8,n_bullet_sprites
        li   r3,bullet_sprite_list
-next_level_4:
+init_level_4:
        clr  *r3
        ai   r3,sprite_size
        dec  r8
-       jne  next_level_4
+       jne  init_level_4
 *      Update target position
-next_level_5:
+init_level_5:
        bl   @rand
        sra  r0,8
        mov  r0,r4
@@ -1208,10 +1226,9 @@ next_level_5:
        bl   @dist_square
        li   r1,8
        mov  @level,r0
-       inc  r0
        sla  r1,0
        c    r9,r1
-       jgt next_level_5
+       jgt init_level_5
 *      Target x
        sla  r4,8
        a    @player_x,r4
@@ -1236,20 +1253,16 @@ next_level_5:
 *      Colors
        li   r0,colrtb
        mov  @level,r1
+       dec  r1
        andi r1,7
        movb @level_colors(r1),r1
        li   r2,16
        bl   @vsmw
-*      Next level
-       inc  @level
-*      Display level
-       li   r9,display_level
-       bl   @display_both_name_tables
 *      Return
        b    *r15                       ; Pop return address and return
 level_colors:
        byte >f1,>1d,>f4,>1a,>f6,>15,>fc,>1e
-*// next_level
+*// init_level
 
 *********************************************************************************
 *
@@ -1268,7 +1281,7 @@ init_game:
        mov  *r0+,@player_y
        mov  *r0,@player_dx
        seto @disp_score
-       li   r0,3
+       li   r0,5
        mov  r0,@lives
        li   r9,display_lives
        bl   @display_both_name_tables
