@@ -33,15 +33,15 @@ del fork.bin_7000
 IF EXIST fork.bin_7000.lz4 (
 del fork.bin_7000.lz4
 )
-IF EXIST fork-fg.bin (
-del fork-fg.bin
+IF EXIST fork-fg99.bin (
+del fork-fg99.bin
 )
 
 xas99.py -b -R -D cart -o fork.bin source/cart-7000.a99
 tools\lz4.exe fork.bin_7000
 
 xas99.py -b -R -D cart -o fork.bin source/cart.a99
-tools\pad.exe fork.bin_6000 fork-fg.bin 4096
+tools\pad.exe fork.bin_6000 fork-fg99.bin 4096
 
 del fork.bin_6000
 del fork.bin_7000

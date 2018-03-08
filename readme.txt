@@ -14,7 +14,7 @@ DSK1.FORKSC    Super Cart E/A#5 file
 DSK1.FORKTB    TI BASIC loader for Mini Memory or Super Cart
 DSK1.FORK      E/A#5 file for 32K RAM
 
-fork-fg.bin    Cartridge image for Final GROM 99 (no 32K RAM required)
+fork-fg99.bin  Cartridge image for FinalGROM 99 (no 32K RAM required)
 fork8.bin      ROM loader image for with 32K RAM
 fork.wav       Tape audio file for Mini Memory or Super Cart
 

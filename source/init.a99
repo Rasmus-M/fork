@@ -15,7 +15,8 @@ init_1:
        inct r0
        li   r2,8
        bl   @copy_memory
-       bl   @init_patterns
+       bl   @hscroll                   ; Scroll patterns and upload to VDP
+       bl   @vscroll
        bl   @init_gfx
        li   r0,22*32
        li   r1,text_line_1
@@ -67,18 +68,6 @@ init_map_4:
 *      Return
        b    *r11
 *// init_map
-
-*********************************************************************************
-*
-* Scroll patterns and upload to VDP
-*
-init_patterns:
-       mov  r11,*r10+                  ; Push return address onto the stack
-       bl   @hscroll
-       bl   @vscroll
-*      Return
-       b    *r15                       ; Pop return address and return
-*// init_patterns
 
 *********************************************************************************
 *

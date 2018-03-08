@@ -368,7 +368,7 @@ check_collisions:
        jhe  check_collisions_1
 *      Collision with target
        mov  @time_left,r0
-       srl  r0,4
+       srl  r0,5
        a    r0,@score
        bl   @play_bing
        bl   @next_level
@@ -429,7 +429,7 @@ check_collisions_4:
        jmp  check_collisions_6
 *      Collision with enemy
 check_collisions_5:
-       a    @d10,@score
+       a    @d100,@score
        bl   @play_crash
        bl   @spawn_enemy_sprite
 *      Return
@@ -1323,6 +1323,9 @@ dist_square:
        abs  r0
        mpy  r0,r0
        a    r1,r9
+       jnc  dist_square_1
+       seto r9                         ; Max value
+dist_square_1:
        b    *r11
 *// dist_square
 
