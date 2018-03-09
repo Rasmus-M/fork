@@ -15,8 +15,7 @@ init_1:
        inct r0
        li   r2,8
        bl   @copy_memory
-       bl   @hscroll                   ; Scroll patterns and upload to VDP
-       bl   @vscroll
+       bl   @scroll_patterns           ; Scroll patterns and upload to VDP
        bl   @init_gfx
        li   r0,22*32
        li   r1,text_line_1
@@ -71,13 +70,16 @@ init_map_4:
 
 *********************************************************************************
 *
-* Scroll patterns horizontally and upload to VDP
+* Scroll patterns upload to VDP
 *
 h_patterns:
        equ  12
+v_patterns:
+       equ  16
 *
-hscroll:
+scroll_patterns:
        mov  r11,*r10+                  ; Push return address onto the stack
+* Scroll patterns horizontally and upload to VDP
        li   r6,hchars                 ; Pointer to from/to pattern numbers
 *      Pattern loop
        clr  r3                         ; Pattern counter
@@ -123,19 +125,7 @@ hscroll_4:
        inc  r3
        ci   r3,h_patterns                      ;
        jlt  hscroll_1
-*      Return
-       b    *r15                       ; Pop return address and return
-*// hscroll
-
-*********************************************************************************
-*
 * Scroll horizontal patterns vertically and upload to VDP
-*
-v_patterns:
-       equ  16
-*
-vscroll:
-       mov  r11,*r10+                  ; Push return address onto the stack
        li   r6,vchars                  ; Pointer to from/to pattern numbers
 *      Pattern loop
        clr  r3                         ; Pattern counter
@@ -205,7 +195,7 @@ from_pattern:
        equ  buffer
 to_pattern:
        equ  buffer+8
-*// vscroll
+*// scroll_patterns
 
 *********************************************************************************
 *

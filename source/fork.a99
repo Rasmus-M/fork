@@ -1226,6 +1226,10 @@ init_level_5:
        bl   @dist_square
        li   r1,8
        mov  @level,r0
+       ci   r0,12
+       jlt  init_level_6
+       li   r0,12
+init_level_6:
        sla  r1,0
        c    r9,r1
        jgt init_level_5
@@ -1275,6 +1279,8 @@ init_game:
        li   r1,pad_init_start+2
        li   r2,pad_init_end-pad_init_start
        bl   @copy_memory
+;      li   r0,16
+;      mov  r0,@level
        li   r0,init_player_data
        mov  *r0+,@player_pattern
        mov  *r0+,@player_x
