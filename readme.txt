@@ -61,10 +61,10 @@ Technical:
 
 * The graphics was created using the Magellan map/graphics editor.
 
-* Tursi's lz4 decompression routine was used to create the FinalGROM 99 image.
+* The scrolling background takes up only 108 bytes of CPU RAM, which is expanded to more than 8 KiB of video RAM.
 
 * The game loads its character set from GROM, but is not dependent on other routines or data in the TI-99/4A ROMs or GROMs.
 
-* The scrolling background takes up only 108 bytes of CPU RAM, which is expanded to more than 8 KiB video RAM.
+* Tursi's lz4 decompression routine was used to create the FinalGROM 99 image.
 
 * The source code is available from GitHub (https://github.com/Rasmus-M/fork).
