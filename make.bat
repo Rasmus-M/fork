@@ -46,3 +46,9 @@ tools\pad.exe fork.bin_6000 fork-fg99.bin 4096
 del fork.bin_6000
 del fork.bin_7000
 del fork.bin_7000.lz4
+
+WHERE jar
+@IF %ERRORLEVEL% NEQ 0 GOTO :end
+jar -cvf fork.rpk fork8.bin layout.xml > make.log
+
+:end
