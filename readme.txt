@@ -67,4 +67,6 @@ Technical:
 
 * Tursi's lz4 decompression routine was used to create the FinalGROM 99 image.
 
+* The TI BASIC loader was created using Senior_falson's SNSLOADER.
+
 * The source code is available from GitHub (https://github.com/Rasmus-M/fork).
