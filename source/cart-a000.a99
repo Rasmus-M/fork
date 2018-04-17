@@ -1,0 +1,27 @@
+       aorg >6000
+       byte >aa,1,1,>52
+       data 0
+       data program_entry
+       data 0,0,0,0
+program_entry:
+       data 0
+       data main
+       byte 8
+       text 'FORK 32K'
+       even
+main:
+       limi 0
+       lwpi >8300
+       li   r0,data
+       li   r1,>a000
+       li   r2,data_end-data
+copy:
+       mov  *r0+,*r1+
+       dect r2
+       jne  copy
+       b    @>a000
+data:
+       xorg >a000
+       copy "fork.a99"
+data_end:
+       end

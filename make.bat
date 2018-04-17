@@ -13,6 +13,9 @@ xdm99.py fork.dsk -a fork -n FORK
 @rem 32k cart
 java -jar tools/ea5tocart.jar fork "FORK" > make.log
 
+@rem 32k cart 2
+xas99.py -R -b -D cart -o fork-32k.bin source/cart-a000.a99
+
 @rem TI BASIC loader
 xas99.py -R -L fork-bas.lst -o fork-bas.obj source/basic-loader.a99
 xdm99.py fork.dsk -a fork-bas.obj -f DIS/FIX80 -n FORKBAS
